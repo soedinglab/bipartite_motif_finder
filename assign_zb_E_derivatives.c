@@ -1,10 +1,38 @@
 #include "assign_zb_E_derivatives.h"
 
+void assign_za_E_derivatives_c(long* x, int i, int inx, double* za, double* zb, int L, int l, double l_p,
+                                 double* za_Ea_derivatives, double* zb_Ea_derivatives, double* za_Eb_derivatives, double* zb_Eb_derivatives,
+                                 double* Ea, double* Eb, double cab, double sf, double D, double sig)
+{    
+    int identical = (inx == x[i]);
+    
+    if (i == l-1)
+    {
+        za_Ea_derivatives[inx*L+i] = -identical*cab*exp(-Ea[x[i]]);
+        za_Eb_derivatives[inx*L+i] = 0;
+        return;
+    }
+    
+    double energy = exp(-Ea[x[i]])*cab;
+
+    double der_a = zb_Ea_derivatives[inx*L+i-l] - zb[i-l]*identical; 
+    double der_b = zb_Eb_derivatives[inx*L+i-l];
+
+    int j;
+    for (j=0; j<i-l+1; ++j)
+    {
+        der_a += za_Ea_derivatives[inx*L+j] - za[j]*identical;
+        der_b += za_Eb_derivatives[inx*L+j];
+    }
+
+    za_Ea_derivatives[inx*L+i] = der_a*energy;
+    za_Eb_derivatives[inx*L+i] = der_b*energy;
+}
 
 void assign_zb_E_derivatives_c(long* x, int i, int inx, double* za, double* zb, int L, int l, double l_p,
                                  double* za_Ea_derivatives, double* zb_Ea_derivatives, double* za_Eb_derivatives, double* zb_Eb_derivatives,
                                  double* Ea, double* Eb, double cab, double sf, double D, double sig)
-                                 {
+ {
     int identical = (inx == x[i]);
     
     double der_b = zb_Eb_derivatives[inx*L+i-1];
@@ -41,8 +69,10 @@ double inline cb_c(int d, double sf, double D, double sig)
     if (d < 0)
         return 0;
     
+    
     double diff = d + 1 - D; 
     double gaussian = exp(- (diff*diff) / (2.0 *sig*sig)) / (sig*sqrt(2*M_PI));
+
     return gaussian*sf + 1 ;
 }
 
@@ -76,8 +106,8 @@ double cb_sf_derivative_c(int d, double sf, double D, double sig)
         return 0;
 
     double diff = d + 1 - D; 
-    double der = sf*exp(-diff*diff/(2*sig*sig))/(sig*sqrt(2*M_PI));
-    return der;
+    double gaussian = exp(- (diff*diff) / (2.0 *sig*sig)) / (sig*sqrt(2*M_PI));
+    return gaussian;
     
 }
 
