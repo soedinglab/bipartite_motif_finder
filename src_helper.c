@@ -1,4 +1,4 @@
-#include "assign_zb_E_derivatives.h"
+#include "src_helper.h"
 
 void assign_za_E_derivatives_c(long* x, int i, int inx, double* za, double* zb, int L, int l, double l_p,
                                  double* za_Ea_derivatives, double* zb_Ea_derivatives, double* za_Eb_derivatives, double* zb_Eb_derivatives,
