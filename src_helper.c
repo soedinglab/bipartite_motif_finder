@@ -5,14 +5,7 @@ void assign_za_E_derivatives_c(long* x, int i, int inx, double* za, double* zb, 
                                  double* Ea, double* Eb, double cab, double sf, double D, double sig)
 {    
     int identical = (inx == x[i]);
-    
-    if (i == l-1)
-    {
-        za_Ea_derivatives[inx*L+i] = -identical*cab*exp(-Ea[x[i]]);
-        za_Eb_derivatives[inx*L+i] = 0;
-        return;
-    }
-    
+        
     double energy = exp(-Ea[x[i]])*cab;
 
     double der_a = zb_Ea_derivatives[inx*L+i-l] - zb[i-l]*identical; 
@@ -41,20 +34,13 @@ void assign_zb_E_derivatives_c(long* x, int i, int inx, double* za, double* zb, 
     double energy = exp(-Eb[x[i]]);
     int j;
     
-    if (i == l-1)  {
-        der_b += -cab*identical*energy;
-        der_a += 0;
+    for (j=0; j<i-l+1; ++j)
+    {
+        der_b += cb_c(i-j-l, sf, D, sig) * ((za_Eb_derivatives[inx*L+j]*energy - za[j]*energy*identical));
+        der_a += cb_c(i-j-l, sf, D, sig) * za_Ea_derivatives[inx*L+j]*energy;  
     }
-        
-    else  {
-        for (j=0; j<i-l+1; ++j)
-        {
-            der_b += cb_c(i-j-l, sf, D, sig) * ((za_Eb_derivatives[inx*L+j]*energy - za[j]*energy*identical));
-            der_a += cb_c(i-j-l, sf, D, sig) * za_Ea_derivatives[inx*L+j]*energy;  
-        }
-        der_b += cab * (zb_Eb_derivatives[inx*L+i-l]*energy - zb[i-l]*energy*identical); 
-        der_a += cab * zb_Ea_derivatives[inx*L+i-l]*energy;
-    }
+    der_b += cab * (zb_Eb_derivatives[inx*L+i-l]*energy - zb[i-l]*energy*identical); 
+    der_a += cab * zb_Ea_derivatives[inx*L+i-l]*energy;
     
     zb_Ea_derivatives[inx*L+i] = der_a;
     zb_Eb_derivatives[inx*L+i] = der_b;
