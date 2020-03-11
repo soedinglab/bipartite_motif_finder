@@ -1,9 +1,39 @@
 #include "src_helper_avx.h"
+#include "lib/simd.h"
+
+void initialize_DerParams(DerParams* params, int L, int no_kmers) {
+
+    params->der_a = malloc_simd_float(sizeof(c_float_t) * no_kmers);
+    params->der_b = malloc_simd_float(sizeof(c_float_t) * no_kmers);
+    params->za_Ea_derivatives = malloc_simd_float(sizeof(c_float_t) * no_kmers * L);
+    params->za_Eb_derivatives = malloc_simd_float(sizeof(c_float_t) * no_kmers * L);
+    params->zb_Ea_derivatives = malloc_simd_float(sizeof(c_float_t) * no_kmers * L);
+    params->zb_Eb_derivatives = malloc_simd_float(sizeof(c_float_t) * no_kmers * L);
+
+}
+
+void deinitialize_DerParams(DerParams* params) {
+
+    free(params->der_a);
+    free(params->der_b);
+    free(params->za_Ea_derivatives);
+    free(params->za_Eb_derivatives);
+    free(params->zb_Ea_derivatives);
+    free(params->zb_Eb_derivatives);
+
+}
+
 
 void assign_za_E_derivatives_c(long* x, int i, double* za, double* zb, int L, int l, int no_kmers,
-                                 double* za_Ea_derivatives, double* zb_Ea_derivatives, double* za_Eb_derivatives, double* zb_Eb_derivatives,
-                                 double* Ea, double* Eb, double cab, double* der_a, double* der_b)
-{  
+                                 DerParams* params, double* Ea, double* Eb, double cab)
+{ 
+    double* za_Ea_derivatives = params->za_Ea_derivatives;
+    double* zb_Ea_derivatives = params->zb_Ea_derivatives;
+    double* za_Eb_derivatives = params->za_Eb_derivatives;
+    double* zb_Eb_derivatives = params->zb_Eb_derivatives;
+    double* der_a = params->der_a;
+    double* der_b = params->der_b;
+
     double energy = exp(-Ea[x[i]])*cab;
     for (int inx=0; inx<no_kmers; inx++)
     {  
@@ -29,9 +59,15 @@ void assign_za_E_derivatives_c(long* x, int i, double* za, double* zb, int L, in
 }
 
 void assign_zb_E_derivatives_c(long* x, int i, double* za, double* zb, int L, int l, int no_kmers,
-                                 double* za_Ea_derivatives, double* zb_Ea_derivatives, double* za_Eb_derivatives, double* zb_Eb_derivatives,
-                                 double* Ea, double* Eb, double cab, double sf, double D, double sig, double* der_a, double* der_b)
+                                 DerParams* params, double* Ea, double* Eb, double cab, double sf, double D, double sig)
  {
+    double* za_Ea_derivatives = params->za_Ea_derivatives;
+    double* zb_Ea_derivatives = params->zb_Ea_derivatives;
+    double* za_Eb_derivatives = params->za_Eb_derivatives;
+    double* zb_Eb_derivatives = params->zb_Eb_derivatives;
+    double* der_a = params->der_a;
+    double* der_b = params->der_b;
+
     double energy = exp(-Eb[x[i]]);
     for (int inx=0; inx<no_kmers; inx++)
     {   
