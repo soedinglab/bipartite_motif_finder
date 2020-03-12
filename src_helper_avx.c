@@ -237,9 +237,8 @@ double inline cb_c(int d, double sf, double D, double sig)
     if (d < 0)
         return 0;
     
-    double eps = 1e-10;
     double diff = d - D; 
-    double gaussian = exp(- (diff*diff) / (2.0 *(sig*sig + eps)));
+    double gaussian = exp(- (diff*diff) / (2.0 *(sig*sig )));
 
     return gaussian*sf + 1 ;
 }
@@ -249,9 +248,9 @@ double cb_D_derivative_c(int d, double sf, double D, double sig)
     if (d < 0)
         return 0;
 
-    double eps = 1e-10;
     double diff = d - D; 
-    double der = sf*diff*exp(-diff*diff/(2.0 *(sig*sig + eps)))/(sig*sig+eps);
+    double sig2 = sig*sig;
+    double der = sf*diff*exp(-diff*diff/(2.0 *sig2))/(sig2);
     return der;
     
 }
@@ -261,10 +260,10 @@ double cb_sig_derivative_c(int d, double sf, double D, double sig)
     if (d < 0)
         return 0;
 
-    double eps = 1e-10;
-    double diff = d - D; 
-    double der = diff*diff*sig/((sig*sig + eps)*(sig*sig + eps));
-    der *= sf*exp(-diff*diff/(2.0 *(sig*sig + eps)));
+    double diff = d - D;
+    double sig2 = sig*sig; 
+    double der = diff*diff*sig/((sig2)*(sig2));
+    der *= sf*exp(-diff*diff/(2.0 *(sig2)));
     return der;
     
 }
@@ -274,9 +273,8 @@ double cb_sf_derivative_c(int d, double sf, double D, double sig)
     if (d < 0)
         return 0;
 
-    double eps = 1e-10;
     double diff = d - D; 
-    double gaussian = exp(- (diff*diff) / (2.0 *(sig*sig + eps)));
+    double gaussian = exp(- (diff*diff) / (2.0 *(sig*sig)));
     return gaussian;
     
 }
