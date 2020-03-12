@@ -1,14 +1,43 @@
 #include "src_helper_avx.h"
 #include "lib/simd.h"
 
+static inline void initialize_array(c_float_t* arr, c_float_t value, int length) {
+  for(int i = 0; i < length; i++) {
+    arr[i] = value;
+  }
+}
+
+double sum_array_c(double* arr, int length)
+{
+    double sum = 0;
+    for(int i = 0; i < length; i++) 
+    {
+        sum += arr[i];
+    }
+    return sum;
+}
+
+
 void initialize_DerParams(DerParams* params, int L, int no_kmers) {
 
-    params->der_a = malloc_simd_float(sizeof(c_float_t) * no_kmers);
-    params->der_b = malloc_simd_float(sizeof(c_float_t) * no_kmers);
-    params->za_Ea_derivatives = malloc_simd_float(sizeof(c_float_t) * no_kmers * L);
-    params->za_Eb_derivatives = malloc_simd_float(sizeof(c_float_t) * no_kmers * L);
-    params->zb_Ea_derivatives = malloc_simd_float(sizeof(c_float_t) * no_kmers * L);
-    params->zb_Eb_derivatives = malloc_simd_float(sizeof(c_float_t) * no_kmers * L);
+    params->der_a = malloc_simd_double(sizeof(c_float_t) * no_kmers);
+    initialize_array(params->der_a, 0, no_kmers);
+
+    params->der_b = malloc_simd_double(sizeof(c_float_t) * no_kmers);
+    initialize_array(params->der_b, 0, no_kmers);
+
+    params->za_Ea_derivatives = malloc_simd_double(sizeof(c_float_t) * no_kmers * L);
+    initialize_array(params->za_Ea_derivatives, 0, no_kmers * L);
+
+    params->za_Eb_derivatives = malloc_simd_double(sizeof(c_float_t) * no_kmers * L);
+    initialize_array(params->za_Eb_derivatives, 0, no_kmers * L);
+
+    params->zb_Ea_derivatives = malloc_simd_double(sizeof(c_float_t) * no_kmers * L);
+    initialize_array(params->zb_Ea_derivatives, 0, no_kmers * L);
+
+    params->zb_Eb_derivatives = malloc_simd_double(sizeof(c_float_t) * no_kmers * L);
+    initialize_array(params->zb_Eb_derivatives, 0, no_kmers * L);
+
 
 }
 
@@ -21,6 +50,29 @@ void deinitialize_DerParams(DerParams* params) {
     free(params->zb_Ea_derivatives);
     free(params->zb_Eb_derivatives);
 
+}
+
+void assign_za_c(int i, double* za, double* zb, double concentration_times_energy, int l)
+{
+    double za_tmp = zb[i-l];
+    for (int j=0; j<i-l+1; j++)
+    {
+        za_tmp += za[j];
+    }
+    za[i] = (za_tmp)*concentration_times_energy;
+}
+
+void assign_zb_c(long* x, int i, double* za, double* zb, double* Eb, double cab, double sf, double D, double sig, int l)
+{    
+    double zb_temp = 0;
+    double energy = exp(-Eb[x[i]]);
+    for (int j=0; j<i-l+1; j++)
+    {
+        zb_temp += za[j]*cb_c(i-j-l, sf, D, sig);
+    }
+    zb_temp *= energy;
+    zb_temp += zb[i-l]*cab*energy;      
+    zb[i] = zb[i-1] + zb_temp;
 }
 
 
@@ -57,6 +109,39 @@ void assign_za_E_derivatives_c(long* x, int i, double* za, double* zb, int L, in
         za_Eb_derivatives[i*no_kmers + inx] = der_b[inx]*energy;
     }
 }
+
+void assign_za_D_derivative_c(int i, double* za_D_derivatives, double* zb_D_derivatives, double concentration_times_energy, int l)
+{
+     double der_tmp = 0;
+    for (int j=0; j<i-l+1; j++)
+    {
+        der_tmp += za_D_derivatives[j];
+    }
+    za_D_derivatives[i] = (zb_D_derivatives[i-l] + der_tmp)*concentration_times_energy;
+}    
+
+
+void assign_za_sig_derivative_c(int i, double* za_sig_derivatives, double* zb_sig_derivatives, double concentration_times_energy, int l)
+ {
+    double der_tmp = 0;
+    for (int j=0; j<i-l+1; j++)
+    {
+        der_tmp += za_sig_derivatives[j];
+    }
+    za_sig_derivatives[i] = (zb_sig_derivatives[i-l] + der_tmp)*concentration_times_energy;
+} 
+
+
+void assign_za_sf_derivative_c(int i, double* za_sf_derivatives, double* zb_sf_derivatives, double concentration_times_energy, int l)
+ {
+    double der_tmp = 0;
+    for (int j=0; j<i-l+1; j++)
+    {
+        der_tmp += za_sf_derivatives[j];
+    }
+    za_sf_derivatives[i] = (zb_sf_derivatives[i-l] + der_tmp)*concentration_times_energy;
+}
+
 
 void assign_zb_E_derivatives_c(long* x, int i, double* za, double* zb, int L, int l, int no_kmers,
                                  DerParams* params, double* Ea, double* Eb, double cab, double sf, double D, double sig)
@@ -101,6 +186,50 @@ void assign_zb_E_derivatives_c(long* x, int i, double* za, double* zb, int L, in
     }
  }
 
+void assign_zb_D_derivative_c(int i, double* za, double* za_D_derivatives, double* zb_D_derivatives, double energy_b, 
+                                     double cab, double sf, double D , double sig, int l)
+{    
+    double der_tmp = 0;
+    for (int j=0; j<i-l+1; j++)
+    {
+        der_tmp += za_D_derivatives[j]*cb_c(i-l-j, sf, D, sig) + za[j]*cb_D_derivative_c(i-l-j, sf, D, sig);
+    }
+    der_tmp += zb_D_derivatives[i-l]*cab;
+    der_tmp *= energy_b;
+    der_tmp += zb_D_derivatives[i-1];
+    
+    zb_D_derivatives[i] = der_tmp;
+ }   
+void assign_zb_sig_derivative_c(int i, double* za, double* za_sig_derivatives, double* zb_sig_derivatives, double energy_b, 
+                                     double cab, double sf, double D , double sig, int l)
+{
+    double der_tmp = 0;
+    for (int j=0; j<i-l+1; j++)
+    {
+        der_tmp += za_sig_derivatives[j]*cb_c(i-l-j, sf, D, sig) + za[j]*cb_sig_derivative_c(i-l-j, sf, D, sig);
+    }
+    der_tmp += zb_sig_derivatives[i-l]*cab;
+    der_tmp *= energy_b;
+    der_tmp += zb_sig_derivatives[i-1];
+    
+    zb_sig_derivatives[i] = der_tmp;
+}
+
+
+void assign_zb_sf_derivative_c(int i, double* za, double* za_sf_derivatives, double* zb_sf_derivatives, double energy_b, 
+                                     double cab, double sf, double D , double sig, int l)
+{
+    double der_tmp = 0;
+    for (int j=0; j<i-l+1; j++)
+    {
+        der_tmp += za_sf_derivatives[j]*cb_c(i-l-j, sf, D, sig) + za[j]*cb_sf_derivative_c(i-l-j, sf, D, sig);
+    }
+    der_tmp += zb_sf_derivatives[i-l]*cab;
+    der_tmp *= energy_b;
+    der_tmp += zb_sf_derivatives[i-1];
+    
+    zb_sf_derivatives[i] = der_tmp;
+}
 
 
 double inline cb_c(int d, double sf, double D, double sig)
@@ -151,4 +280,3 @@ double cb_sf_derivative_c(int d, double sf, double D, double sig)
     return gaussian;
     
 }
-
