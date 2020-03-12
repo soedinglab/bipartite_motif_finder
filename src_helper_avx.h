@@ -18,6 +18,7 @@ typedef struct DerParams {
 static void initialize_array(c_float_t* arr, c_float_t value, int length);
 
 double sum_array_c(double* arr, int length);
+void sum_mat_rows(double* out, double* mat, int n_row, int n_col);
 
 void initialize_DerParams(DerParams* params, int L, int no_kmers); 
 void deinitialize_DerParams(DerParams* params);

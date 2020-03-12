@@ -7,6 +7,27 @@ static inline void initialize_array(c_float_t* arr, c_float_t value, int length)
   }
 }
 
+static inline void add_array(c_float_t* out, c_float_t* x, c_float_t* y, size_t N) {
+  for (int n = 0; n < N; n+=VECSIZE_DOUBLE) {
+    simd_double x_chunk = simdf64_load(x + n);
+    simd_double y_chunk = simdf64_load(y + n);
+    simdf64_store(out + n,  simdf64_add(x_chunk, y_chunk));
+  }
+}
+
+//out = x + y*constant
+static inline void add_mul_constant(c_float_t* out, c_float_t* x, c_float_t* y, c_float_t constant, size_t N) {
+  simd_double const_chunk = simdf64_set(constant);
+  for (int n = 0; n < N; n+=VECSIZE_DOUBLE) {
+    simd_double y_chunk = simdf64_load(y + n);
+
+    simd_double x_chunk = simdf64_load(x + n);
+    simd_double mul_yc = simdf64_mul(y_chunk, const_chunk);
+
+    simdf64_store(out + n,  simdf64_add(x_chunk, mul_yc) );
+  }
+}
+
 double sum_array_c(double* arr, int length)
 {
     double sum = 0;
@@ -17,6 +38,17 @@ double sum_array_c(double* arr, int length)
     return sum;
 }
 
+void sum_mat_rows(double* out, double* mat, int n_row, int n_col)
+{
+    for (int j=0; j<n_col; j++)
+    {
+        out[j] = 0;
+        for (int i=0; i<n_row; i++)
+        {
+            out[j] += mat[i*n_col + j];
+        }
+    }
+}
 
 void initialize_DerParams(DerParams* params, int L, int no_kmers) {
 
@@ -96,11 +128,8 @@ void assign_za_E_derivatives_c(long* x, int i, double* za, double* zb, int L, in
 
     for (int j=0; j<i-l+1; ++j)
     {
-        for (int inx=0; inx<no_kmers; inx++)
-        {  
-            der_a[inx] += za_Ea_derivatives[j*no_kmers + inx];
-            der_b[inx] += za_Eb_derivatives[j*no_kmers + inx];
-        }
+        add_array(der_a, der_a, za_Ea_derivatives + j*no_kmers, no_kmers);
+        add_array(der_b, der_b, za_Eb_derivatives + j*no_kmers, no_kmers);
         der_a[x[i]] -= za[j];
     }
     for (int inx=0; inx<no_kmers; inx++)
@@ -162,13 +191,11 @@ void assign_zb_E_derivatives_c(long* x, int i, double* za, double* zb, int L, in
   
     for (int j=0; j<i-l+1; ++j)
     {
-        double concentration_j = cb_c(i-j-l, sf, D, sig);
-        for (int inx=0; inx<no_kmers; inx++)
-        {
-            der_b[inx] += concentration_j * za_Eb_derivatives[j*no_kmers + inx] * energy;
-            der_a[inx] += concentration_j * za_Ea_derivatives[j*no_kmers + inx] * energy;  
-        }
-        der_b[x[i]] -= concentration_j*za[j]*energy;
+        double concentration_times_energy = cb_c(i-j-l, sf, D, sig) * energy;
+        add_mul_constant(der_b, der_b, za_Eb_derivatives + j*no_kmers, concentration_times_energy, no_kmers);
+        add_mul_constant(der_a, der_a, za_Ea_derivatives + j*no_kmers, concentration_times_energy, no_kmers);
+
+        der_b[x[i]] -= concentration_times_energy*za[j];
 
     }
 
@@ -185,6 +212,7 @@ void assign_zb_E_derivatives_c(long* x, int i, double* za, double* zb, int L, in
         zb_Eb_derivatives[i*no_kmers + inx] = der_b[inx];
     }
  }
+
 
 void assign_zb_D_derivative_c(int i, double* za, double* za_D_derivatives, double* zb_D_derivatives, double energy_b, 
                                      double cab, double sf, double D , double sig, int l)
