@@ -22,10 +22,21 @@ no_tries = args.no_tries
 #define paths for differnet cycles
 celf1_0 = '../RBP_motif_cluster/selex_taipale/CELF1/CELF1_0_TCTAGT40NAAC0_sig.seq_rc.fastq'
 celf1_4 = '../RBP_motif_cluster/selex_taipale/CELF1/CELF1_4_construct2_TTCTAC40NCGA_AAG_4_rc.fastq'
+hnrnpa0_0 = '../RBP_motif_cluster/selex_taipale/HNRNPA0/HNRNPA0_0_TGTCGA40NCCGA0_sig.seq_rc.fastq'
+hnrnpa0_4 = '../RBP_motif_cluster/selex_taipale/HNRNPA0/HNRNPA0_4_TGTCGA40NCCGA_AAG_4_rc.fastq'
+khdrbs2_0 = '../RBP_motif_cluster/selex_taipale/KHDRBS2/KHDRBS2_TGTGGT40NGGC0_sig.seq_rc.fastq'
+khdrbs2_4 = '../RBP_motif_cluster/selex_taipale/KHDRBS2/KHDRBS2_4_TGTGGT40NGGC_EMJ_4_rc.fastq'
+
 
 if factor.lower()=='celf1':
     bg = celf1_0
     pos = celf1_4
+elif factor.lower()=='hnrnpa0':
+    bg = hnrnpa0_0
+    pos = hnrnpa0_4
+elif factor.lower()=='khdrbs2':
+    bg = khdrbs2_0
+    pos = khdrbs2_4
 else:
     print('factor not available')
     exit()
