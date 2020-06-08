@@ -1,5 +1,5 @@
 #include "src_helper_avx.h"
-#include "lib/simd.h"
+#include "../lib/simd.h"
 
 static inline void initialize_array(c_float_t* arr, c_float_t value, int length) {
   for(int i = 0; i < length; i++) {
@@ -275,8 +275,8 @@ double inline cb_c(int d, double sf, double D, double sig)
     if (d < 0)
         return 0;
     
-    double diff = d - D; 
-    double gaussian = exp(- (diff*diff) / (2.0 *(sig*sig )));
+    double diff = log(d+1) - D; 
+    double gaussian = exp(- (diff*diff) / (2.0 *(sig*sig )))/(d+1);
 
     return gaussian*sf + 1 ;
 }
@@ -286,9 +286,9 @@ double cb_D_derivative_c(int d, double sf, double D, double sig)
     if (d < 0)
         return 0;
 
-    double diff = d - D; 
+    double diff = log(d+1) - D; 
     double sig2 = sig*sig;
-    double der = sf*diff*exp(-diff*diff/(2.0 *sig2))/(sig2);
+    double der = sf*diff*exp(-diff*diff/(2.0 *sig2))/(sig2*(d+1));
     return der;
     
 }
@@ -298,9 +298,9 @@ double cb_sig_derivative_c(int d, double sf, double D, double sig)
     if (d < 0)
         return 0;
 
-    double diff = d - D;
+    double diff = log(d+1) - D;
     double sig2 = sig*sig; 
-    double der = diff*diff*sig/((sig2)*(sig2));
+    double der = diff*diff/(sig2*sig*(d+1));
     der *= sf*exp(-diff*diff/(2.0 *(sig2)));
     return der;
     
@@ -311,8 +311,8 @@ double cb_sf_derivative_c(int d, double sf, double D, double sig)
     if (d < 0)
         return 0;
 
-    double diff = d - D; 
-    double gaussian = exp(- (diff*diff) / (2.0 *(sig*sig)));
+    double diff = log(d+1) - D; 
+    double gaussian = exp(-(diff*diff)/(2.0 *(sig*sig)))/(d+1);
     return gaussian;
     
 }

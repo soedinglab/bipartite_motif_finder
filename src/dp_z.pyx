@@ -38,7 +38,7 @@ cpdef seq2int_cy(str sequence):
 
     
 
-cdef extern from "src_helper_avx.c":
+cdef extern from "src_helper_avx_lognorm.c":
     pass
     
 cdef extern from "src_helper_avx.h":
