@@ -19,9 +19,10 @@ def auc_evaluate(param, plus, bg):
     y_true = np.append(np.ones(len(plus)), np.zeros(len(bg)))
     y_score = np.append(z_plus, z_bg)
     
+    fpr_grd, tpr_grd, _ = roc_curve(y_true, y_score)
     auc = roc_auc_score(y_true, y_score)
     
-    return auc
+    return fpr_grd, tpr_grd, auc
 
 
 
@@ -30,20 +31,15 @@ def partition (list_in, n):
     return [list_in[i::n] for i in range(n)]
 
 
-def plt_performance(auc_validation, auc_train, param_history, theta):
+def plt_performance(plus, bg, plus_valid, bg_valid, param_history):
         
-    x = np.arange(1, len(auc_validation)+1, 1)
-    
     fig, (ax1, ax2, ax3) = plt.subplots(1,3, figsize=(12,3.5))
-    ax1.set_xlabel('10th iteration')
-    ax1.set_ylabel('AUC')
     
-    x_max = max(30, len(auc_validation))
+    theta = param_history[-1]
+    x = np.arange(1, len(param_history)+1, 1)
+
+    # get current motif =======================
     
-    ax1.set_xlim(0,x_max)
-    ax1.set_ylim(0.4,1)
-    
-    # get current motif ===========
     core1 = {}
     for i in range(len(kmer_inx)):
         core1[inx_kmer[i]] = theta[i]
@@ -57,36 +53,49 @@ def plt_performance(auc_validation, auc_train, param_history, theta):
     
     d = np.exp(theta[-2])
     sig = np.exp(theta[-1])
-    #===============================================
-
-    ax1.set_title('%s(%.2f) -- %.1f(%.1f) -- %s(%.2f)\n%s(%.2f) ----------------- %s(%.2f)\n%s(%.2f) ----------------- %s(%.2f)\ncurrent validation AUC: %.3f\nvariation index: %.2f'%(
-        core1.index[0], core1.values[0],d,sig,core2.index[0], core2.values[0], 
-        core1.index[1], core1.values[1], core2.index[1], core2.values[1], 
-        core1.index[2], core1.values[2], core2.index[2], core2.values[2],
-        auc_validation[-1],
-        param_local_fluctuation(param_history)),
-                loc='left')
-    ax1.plot(x, auc_validation, color='blue', label='validation set ')  
-    ax1.plot(x, auc_train, color='red', label='training set')
-    ax1.legend()
     
-    #Plot binding energies of one kmer per core ====
+
+    # set plot title ===========================
+
+    fig.suptitle(f'{core1.index[0]}({core1.values[0]:.2f}) -- {d:.1f}({sig:.1f}) -- {core2.index[0]}({core2.values[0]:.2f})\n' +
+    f'{core1.index[1]}({core1.values[1]:.2f}) ----------------- {core2.index[1]}({core2.values[1]:.2f})\n' +
+    f'{core1.index[2]}({core1.values[2]:.2f}) ----------------- {core2.index[2]}({core2.values[2]:.2f})\n' +
+    f'variation index: {param_local_fluctuation(param_history):.2f}', horizontalalignment='left', fontsize=12, x=0.1, y=1.2)
+        
+    # AUC plots ================================
+    
+    fpr_v, tpr_v, aucv = auc_evaluate(theta, plus_valid, bg_valid)
+    fpr_t, tpr_t, auct = auc_evaluate(theta, plus, bg)
+        
+    ax1.plot([0, 1], [0, 1], 'k--')
+    ax1.plot(fpr_v, tpr_v, label=f'validation (AUC={aucv:.2f})')
+    ax1.plot(fpr_t, tpr_t, label=f'training (AUC={auct:.2f})')
+    ax1.set_xlabel('False positive rate')
+    ax1.set_ylabel('True positive rate')
+    ax1.set_title('ROC curve')
+    ax1.legend(loc='best')
+
+    # Plot binding energies of best bound k-mer per core ====
+    
+    kmer1 = core1.index[0]
+    kmer2 = core2.index[0]
     
     core1_hist = [arr[kmer_inx[kmer1]] for arr in param_history]
     core2_hist = [arr[kmer_inx[kmer2]+ len(kmer_inx)] for arr in param_history]
     
     ax2.plot(x, core1_hist, color='blue', label='core1 %s E'%kmer1)
     ax2.plot(x, core2_hist, color='red', label='core2 %s E'%kmer2)
-    ax3.set_xlabel('10th iteration')
+    
+    ax2.set_xlabel('n\'th iteration')
     ax2.legend()
-    ax2.set_xlim(0,x_max)
         
     # plot sigma, D, and SF ========================
+    
     sf_hist = [np.exp(arr[-3]) for arr in param_history]
     D_hist = [np.exp(arr[-2]) for arr in param_history]
     sig_hist = [np.exp(arr[-1]) for arr in param_history]
     
-    ax3.set_xlabel('10th iteration')
+    ax3.set_xlabel('n\'th iteration')
     ax3.plot(x, D_hist, color='blue', label='D')  
     ax3.plot(x, sig_hist, color='red', label='sigma')
     
@@ -96,14 +105,12 @@ def plt_performance(auc_validation, auc_train, param_history, theta):
     ax4.tick_params(axis='y', labelcolor='green')    
     
     ax3.legend()    
-    ax3.set_xlim(0,x_max)
     
     #================================================
     
     plt.savefig('plots/'+ plot_name +'.pdf', bbox_inches='tight')
-    
-    clear_output(wait=True)
     plt.show()
+
 
 
 #returns a fluctuation score [0-1] max representing parameter variation in the last 5 iterations.
@@ -216,6 +223,7 @@ def optimize_adam(plus, bg, plus_valid, bg_valid, red_thr=10, var_thr=0.05,
                     
                     variability_index = param_local_fluctuation(param_history)
                     if variability_index<var_thr or t>max_iterations:
+                        plt_performance(plus, bg, plus_valid, bg_valid, param_history)
                         np.savetxt(fname='param/'+ plot_name +'.txt', X=np.insert(theta_0,0,f_t))
                         return theta_0, g_t               
                 
