@@ -119,7 +119,7 @@ def param_local_fluctuation(param_history):
     
     last_params = list(param_history[-1])
     min_energy_inx = last_params.index(min(last_params[:-3]))
-    energy_hist = [np.exp(arr[min_energy_inx]) for arr in param_history]
+    energy_hist = [arr[min_energy_inx] for arr in param_history]
     
     D_hist = [np.exp(arr[-2]) for arr in param_history]
     sig_hist = [np.exp(arr[-1]) for arr in param_history]
@@ -133,9 +133,6 @@ def param_local_fluctuation(param_history):
        
     #max(arr)-min(arr) for the last 5 elements of this parameter in adam optimization
     local_variation=np.array([max(a)-min(a) for a in [energy_hist[-loc_len:], D_hist[-loc_len:], sig_hist[-loc_len:]]])
-    
-    #max(arr)-min(arr) for all parameter history in adam optimization
-    #global_variation=np.array([max(a)-min(a) for a in [energy_hist, D_hist, sig_hist]])
         
     #return biggest ratio of local to absolute value
     return max(local_variation/(np.array([energy_hist[-1], D_hist[-1], sig_hist[-1]])+1))
