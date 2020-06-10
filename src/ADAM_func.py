@@ -242,3 +242,8 @@ def parse_fastq(file_name):
 def parse_fasta(file_name):
     input_seq_iterator = SeqIO.parse(file_name, "fasta")
     return [str(record.seq) for record in input_seq_iterator]
+
+def parse_seq(file_name):
+    with open(file_name,'r') as f:
+        seq = [line.rstrip() for line in f]
+    return seq

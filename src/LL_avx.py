@@ -3,8 +3,6 @@ from dp_z import *
 
 # ### implementation of the LL object
 
-# In[6]:
-
 
 class nLL:
     def __init__(self, seqs_p, seqs_bg):
