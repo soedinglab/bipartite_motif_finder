@@ -160,8 +160,6 @@ def optimize_adam(plus, bg, plus_valid, bg_valid, red_thr=10, var_thr=0.05,
 
 
     #auc array tracks auc values
-    auc_validation = []
-    auc_train = []
     param_history = []    
     
     #calculate the stretch of reduced performance
@@ -204,29 +202,22 @@ def optimize_adam(plus, bg, plus_valid, bg_valid, red_thr=10, var_thr=0.05,
             v_cap = v_t/(1-(beta_2**t)) 
 
             #before updating parameters plot performance on validation set
-
-            if (t*sequences_per_batch)%evaluate_after < sequences_per_batch:  #every now and then
-                #aucv = auc_evaluate(theta_0, plus_valid, bg_valid)
-                #auct = auc_evaluate(theta_0, plus, bg)
-                #auc_validation.append(aucv)
-                #auc_train.append(auct)
+            
+            #every now and then: evaluate after $evaluate_after sequences
+            if (t*sequences_per_batch)%evaluate_after < sequences_per_batch: 
+                
+                #track parameter evolution
                 param_history.append(theta_0)
-                #plt_performance(auc_validation, auc_train, param_history, theta_0)
                 
                 if len(param_history)>5:
-                    #if auc_validation[-1] <= auc_validation[-2]:
-                    #    reduction += 1
 
-                    #stop when validation set performs worse for at  least red_thr times (variation) and when the parameters are stable
+                    #stop when the parameters are stable (see param_local_fluctuation)
+                    #OR stop when it took too long ($max_iterations)
+                    
                     variability_index = param_local_fluctuation(param_history)
-                    if variability_index<var_thr:
+                    if variability_index<var_thr or t>max_iterations:
                         np.savetxt(fname='param/'+ plot_name +'.txt', X=np.insert(theta_0,0,f_t))
-                        return theta_0, g_t
-
-                    if t>max_iterations:
-                        np.savetxt(fname='param/'+ plot_name +'.txt', X=np.insert(theta_0,0,f_t))
-                        return theta_0, g_t
-                
+                        return theta_0, g_t               
                 
             #updates the parameters by moving a step towards gradients
             theta_0_prev = theta_0 
