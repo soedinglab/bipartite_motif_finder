@@ -108,9 +108,9 @@ def plt_performance(plus, bg, plus_valid, bg_valid, param_history):
     
     #================================================
     
-    plt.savefig('plots/'+ plot_name +'.pdf', bbox_inches='tight')
-    plt.show()
-
+    plt.savefig('plots/'+ file_name +'.pdf', bbox_inches='tight')
+    return auct, aucv
+    
 
 
 #returns a fluctuation score [0-1] max representing parameter variation in the last 5 iterations.
@@ -139,7 +139,7 @@ def param_local_fluctuation(param_history):
 
 
 
-def optimize_adam(plus, bg, plus_valid, bg_valid, red_thr=10, var_thr=0.05, 
+def optimize_adam(plus, bg, plus_valid, bg_valid, var_thr=0.05, 
                   sequences_per_batch=100, max_iterations=1000, evaluate_after=None):
 
     #number of minibatches: number of positives/numbers per batch
@@ -220,8 +220,8 @@ def optimize_adam(plus, bg, plus_valid, bg_valid, red_thr=10, var_thr=0.05,
                     
                     variability_index = param_local_fluctuation(param_history)
                     if variability_index<var_thr or t>max_iterations:
-                        plt_performance(plus, bg, plus_valid, bg_valid, param_history)
-                        np.savetxt(fname='param/'+ plot_name +'.txt', X=np.insert(theta_0,0,f_t))
+                        auct, aucv = plt_performance(plus, bg, plus_valid, bg_valid, param_history)
+                        np.savetxt(fname='param/'+ file_name +'.txt', X=np.append(theta_0,[f_t, auct, aucv]))
                         return theta_0, g_t               
                 
             #updates the parameters by moving a step towards gradients
