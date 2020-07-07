@@ -276,19 +276,19 @@ double inline cb_c(int d, double sf, double r, double p)
 {   
     if (d < 0)
         return 0;
-     
-    double nb = (tgamma(d+1+r)*pow(1-p,d+1)*pow(p,r))/(tgamma(r)*tgamma(d+2));
-    return nb*sf + 1 ;
+
+    double lognb = lgamma(d+r) + d*log(1-p) + r*log(p) - lgamma(r) - lgamma(d+1);
+    return exp(lognb)*sf + 1 ;
 }
 
 double cb_r_derivative_c(int d, double sf, double r, double p)
 {    
     if (d < 0)
         return 0;
-    double k = d+1;
-    double der = (sf*pow(1-p,k))/tgamma(k+1);
-    der *= (pow(p,r)*(tgamma(r)*tgamma(k+r)*digamma(k+r) - tgamma(k+r)*digamma(r)*tgamma(r)))/pow(tgamma(r),2) + (log(p)*pow(p,r)*tgamma(k+r))/tgamma(r);
-    return der;
+    
+    double der = digamma(d+r) + log(p) - digamma(r);
+    double lognb = lgamma(d+r) + d*log(1-p) + r*log(p) - lgamma(r) - lgamma(d+1);
+    return der*exp(lognb)*sf;
     
 }
 
@@ -296,10 +296,10 @@ double cb_p_derivative_c(int d, double sf, double r, double p)
 {    
     if (d < 0)
         return 0;
-    double k = d+1;
-    double der = (sf*tgamma(k+r))/(tgamma(k+1)*tgamma(r));
-    der *= -k*pow(1-p,k-1)*pow(p,r) + r*pow(p,r-1)*pow(1-p,k);
-    return der;
+
+    double der = -d/(1-p) + r/p;
+    double lognb = lgamma(d+r) + d*log(1-p) + r*log(p) - lgamma(r) - lgamma(d+1);
+    return der*exp(lognb)*sf;
     
 }
 
@@ -309,8 +309,8 @@ double cb_sf_derivative_c(int d, double sf, double r, double p)
     if (d < 0)
         return 0;
 
-    double nb = (tgamma(d+1+r)*pow(1-p,d+1)*pow(p,r))/(tgamma(r)*tgamma(d+2));
-    return nb;
+    double lognb = lgamma(d+r) + d*log(1-p) + r*log(p) - lgamma(r) - lgamma(d+1);
+    return exp(lognb);
     
 }
 
