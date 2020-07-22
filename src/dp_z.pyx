@@ -38,10 +38,10 @@ cpdef seq2int_cy(str sequence):
 
     
 
-cdef extern from "src_helper_avx_lognorm.c":
+cdef extern from "src_helper_avx_nb.c":
     pass
     
-cdef extern from "src_helper_avx.h":
+cdef extern from "src_helper_avx_nb.h":
     ctypedef struct DerParams:
         c_float_t* za_Ea_derivatives
         c_float_t* zb_Ea_derivatives
@@ -57,31 +57,30 @@ cdef extern from "src_helper_avx.h":
     void sum_mat_rows(double* out, double* mat, int n_row, int n_col)
     
     void assign_za_c(int i, double* za, double* zb, double concentration_times_energy, int l)
-    void assign_zb_c(long* x, int i, double* za, double* zb, double* Eb, double cab, double sf, double D, double sig, int l)
-    
+    void assign_zb_c(long* x, int i, double* za, double* zb, double* Eb, double cab, double sf, double r, double p, int l)
+
     void assign_za_E_derivatives_c(long* x, int i, double* za, double* zb, int L, int l, int no_kmers,
                                      DerParams* params, double* Ea, double* Eb, double cab)
 
     void assign_zb_E_derivatives_c(long* x, int i, double* za, double* zb, int L, int l, int no_kmers,
-                                     DerParams* params, double* Ea, double* Eb, double cab, double sf, double D, double sig)
+                                     DerParams* params, double* Ea, double* Eb, double cab, double sf, double r, double p)
 
-    void assign_za_D_derivative_c(int i, double* za_D_derivatives, double* zb_D_derivatives, double concentration_times_energy, int l)
-
-    void assign_za_sig_derivative_c(int i, double* za_sig_derivatives, double* zb_sig_derivatives, double concentration_times_energy, int l)
-
+    void assign_za_r_derivative_c(int i, double* za_r_derivatives, double* zb_r_derivatives, double concentration_times_energy, int l)
+    void assign_za_p_derivative_c(int i, double* za_p_derivatives, double* zb_p_derivatives, double concentration_times_energy, int l)
     void assign_za_sf_derivative_c(int i, double* za_sf_derivatives, double* zb_sf_derivatives, double concentration_times_energy, int l)
-    
-    void assign_zb_D_derivative_c(int i, double* za, double* za_D_derivatives, double* zb_D_derivatives, double energy_b, 
-                                         double cab, double sf, double D , double sig, int l)
-    void assign_zb_sig_derivative_c(int i, double* za, double* za_sig_derivatives, double* zb_sig_derivatives, double energy_b, 
-                                         double cab, double sf, double D , double sig, int l)
+
+    void assign_zb_r_derivative_c(int i, double* za, double* za_r_derivatives, double* zb_r_derivatives, double energy_b, 
+                                         double cab, double sf,double r, double p, int l)
+    void assign_zb_p_derivative_c(int i, double* za, double* za_p_derivatives, double* zb_p_derivatives, double energy_b, 
+                                         double cab, double sf, double r, double p, int l)
     void assign_zb_sf_derivative_c(int i, double* za, double* za_sf_derivatives, double* zb_sf_derivatives, double energy_b, 
-                                         double cab, double sf, double D , double sig, int l)
+                                         double cab, double sf, double r, double p, int l)
 
     double cb_c(int, double, double, double)
-    double cb_D_derivative_c(int, double, double, double)
-    double cb_sig_derivative_c(int, double, double, double)
+    double cb_r_derivative_c(int, double, double, double)
+    double cb_p_derivative_c(int, double, double, double)
     double cb_sf_derivative_c(int, double, double, double)
+    double digamma(double)
     
 
 cdef array_from_pointer(void* ptr, int size):
@@ -101,8 +100,8 @@ def DP_Z_cy(double[:] args, long[:] x):
     cdef double[:] Ea = args[0:len(kmer_inx)]
     cdef double[:] Eb = args[len(kmer_inx):2*len(kmer_inx)]
     cdef double sf = args[-3]
-    cdef double D = args[-2]
-    cdef double sig = args[-1]
+    cdef double r = args[-2]
+    cdef double p = args[-1]
     
     #initialization of statistical weigths
     cdef double[:] za = np.zeros(L)
@@ -122,11 +121,11 @@ def DP_Z_cy(double[:] args, long[:] x):
     cdef double[:] za_sf_derivatives = np.zeros(L)
     cdef double[:] zb_sf_derivatives = np.zeros(L)
     
-    cdef double[:] za_D_derivatives = np.zeros(L)
-    cdef double[:] zb_D_derivatives = np.zeros(L)
+    cdef double[:] za_r_derivatives = np.zeros(L)
+    cdef double[:] zb_r_derivatives = np.zeros(L)
 
-    cdef double[:] za_sig_derivatives = np.zeros(L)
-    cdef double[:] zb_sig_derivatives = np.zeros(L)
+    cdef double[:] za_p_derivatives = np.zeros(L)
+    cdef double[:] zb_p_derivatives = np.zeros(L)
 
 
     cdef int inx
@@ -145,23 +144,23 @@ def DP_Z_cy(double[:] args, long[:] x):
         
         #calculate statistical weights
         assign_za_c(i, &za[0], &zb[0], energy_conc_a, l)
-        assign_zb_c(&x[0], i, &za[0], &zb[0], &Eb[0], cab, sf, D, sig, l)
+        assign_zb_c(&x[0], i, &za[0], &zb[0], &Eb[0], cab, sf, r, p, l)
         
         #calculate derivatives for all kmers (inx) at each position
         assign_za_E_derivatives_c(&x[0], i, &za[0], &zb[0], L, l, len(kmer_inx), 
                                       &params, &Ea[0], &Eb[0], cab)
         assign_zb_E_derivatives_c(&x[0], i, &za[0], &zb[0], L, l, len(kmer_inx), 
-                                      &params, &Ea[0], &Eb[0], cab, sf, D, sig)
+                                      &params, &Ea[0], &Eb[0], cab, sf, r, p)
         
         
         assign_za_sf_derivative_c(i, &za_sf_derivatives[0], &zb_sf_derivatives[0], energy_conc_a, l)
-        assign_zb_sf_derivative_c(i, &za[0], &za_sf_derivatives[0], &zb_sf_derivatives[0], energy_b, cab, sf, D, sig, l)
+        assign_zb_sf_derivative_c(i, &za[0], &za_sf_derivatives[0], &zb_sf_derivatives[0], energy_b, cab, sf, r, p, l)
         
-        assign_za_D_derivative_c(i, &za_D_derivatives[0], &zb_D_derivatives[0], energy_conc_a, l)
-        assign_zb_D_derivative_c(i, &za[0], &za_D_derivatives[0], &zb_D_derivatives[0], energy_b, cab, sf, D, sig, l)
+        assign_za_r_derivative_c(i, &za_r_derivatives[0], &zb_r_derivatives[0], energy_conc_a, l)
+        assign_zb_r_derivative_c(i, &za[0], &za_r_derivatives[0], &zb_r_derivatives[0], energy_b, cab, sf, r, p, l)
         
-        assign_za_sig_derivative_c(i, &za_sig_derivatives[0], &zb_sig_derivatives[0], energy_conc_a, l)
-        assign_zb_sig_derivative_c(i, &za[0], &za_sig_derivatives[0], &zb_sig_derivatives[0], energy_b, cab, sf, D, sig, l)
+        assign_za_p_derivative_c(i, &za_p_derivatives[0], &zb_p_derivatives[0], energy_conc_a, l)
+        assign_zb_p_derivative_c(i, &za[0], &za_p_derivatives[0], &zb_p_derivatives[0], energy_b, cab, sf, r, p, l)
 
     Z_x = zb[L-1] + sum_array_c(&za[0], L)
     
@@ -176,9 +175,9 @@ def DP_Z_cy(double[:] args, long[:] x):
     d_Eb = zb_Eb_derivatives[L-1,:] + np.sum(za_Eb_derivatives, axis=0)
   
     d_sf = zb_sf_derivatives[L-1] + sum_array_c(&za_sf_derivatives[0], L)
-    d_D = zb_D_derivatives[L-1] + sum_array_c(&za_D_derivatives[0], L)
-    d_sig = zb_sig_derivatives[L-1] + sum_array_c(&za_sig_derivatives[0], L)       
-    gradient = np.concatenate([q.ravel() for q in [d_Ea, d_Eb, np.array([d_sf, d_D, d_sig])]])
+    d_r = zb_r_derivatives[L-1] + sum_array_c(&za_r_derivatives[0], L)
+    d_p = zb_p_derivatives[L-1] + sum_array_c(&za_p_derivatives[0], L)       
+    gradient = np.concatenate([q.ravel() for q in [d_Ea, d_Eb, np.array([d_sf, d_r, d_p])]])
 
     deinitialize_DerParams(&params)
     
