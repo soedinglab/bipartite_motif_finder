@@ -8,7 +8,9 @@ def auc_evaluate(param, plus, bg):
     n_pos = 3
     #exp parameters to make sure they are positive
     args = param.copy()
-    args[-n_pos:] = np.exp(args[-n_pos:])
+    args[-n_pos:-1] = np.exp(args[-n_pos:-1])
+    exp_p = np.exp(args[-1])
+    args[-1] = exp_p/(1+exp_p)
         
     for i, x in enumerate(seq_pos):
         z_plus[i], _ = DP_Z_cy(args, x)
@@ -27,8 +29,9 @@ def auc_evaluate(param, plus, bg):
 
 
 def partition (list_in, n):
-    random.shuffle(list_in)
-    return [list_in[i::n] for i in range(n)]
+    new_list = list_in.copy()
+    random.shuffle(new_list)
+    return [new_list[i::n] for i in range(n)]
 
 
 def plt_performance(plus, bg, plus_valid, bg_valid, param_history):
@@ -51,13 +54,13 @@ def plt_performance(plus, bg, plus_valid, bg_valid, param_history):
         core2[inx_kmer[i]] = theta[i+64]
     core2 = pd.Series(core2).sort_values(ascending=True)
     
-    d = np.exp(theta[-2])
-    sig = np.exp(theta[-1])
+    r = np.exp(theta[-2])
+    p = 1/(1+np.exp(-theta[-1]))
     
 
     # set plot title ===========================
 
-    fig.suptitle(f'{core1.index[0]}({core1.values[0]:.2f}) -- {d:.1f}({sig:.1f}) -- {core2.index[0]}({core2.values[0]:.2f})\n' +
+    fig.suptitle(f'{core1.index[0]}({core1.values[0]:.2f}) -- r={r:.1f},p={p:.1f} -- {core2.index[0]}({core2.values[0]:.2f})\n' +
     f'{core1.index[1]}({core1.values[1]:.2f}) ----------------- {core2.index[1]}({core2.values[1]:.2f})\n' +
     f'{core1.index[2]}({core1.values[2]:.2f}) ----------------- {core2.index[2]}({core2.values[2]:.2f})\n' +
     f'variation index: {param_local_fluctuation(param_history):.2f}', horizontalalignment='left', fontsize=12, x=0.1, y=1.2)
@@ -89,22 +92,23 @@ def plt_performance(plus, bg, plus_valid, bg_valid, param_history):
     ax2.set_xlabel('n\'th iteration')
     ax2.legend()
         
-    # plot sigma, D, and SF ========================
+    # plot r, p, and SF ========================
     
     sf_hist = [np.exp(arr[-3]) for arr in param_history]
-    D_hist = [np.exp(arr[-2]) for arr in param_history]
-    sig_hist = [np.exp(arr[-1]) for arr in param_history]
+    r_hist = [np.exp(arr[-2]) for arr in param_history]
+    p_hist = [1/(1+np.exp(-arr[-1])) for arr in param_history]
     
     ax3.set_xlabel('n\'th iteration')
-    ax3.plot(x, D_hist, color='blue', label='D')  
-    ax3.plot(x, sig_hist, color='red', label='sigma')
+    ax3.plot(x, r_hist, color='blue', label='r')  
+    #ax3.plot(x, p_hist, color='red', label='p')
     
     ax4 = ax3.twinx()  # instantiate a second axes that shares the same x-axis
-    ax4.set_ylabel('sf', color='green')  # we already handled the x-label with ax1
-    ax4.plot(x, sf_hist, color='green', label='sf')
-    ax4.tick_params(axis='y', labelcolor='green')    
+    ax4.set_ylabel('p', color='red')  # we already handled the x-label with ax1
+    ax4.plot(x, p_hist, color='red', label='p')
+    ax4.tick_params(axis='y', labelcolor='red')    
     
-    ax3.legend()    
+    ax3.legend() 
+    ax4.legend()
     
     #================================================
     
@@ -118,11 +122,11 @@ def plt_performance(plus, bg, plus_valid, bg_valid, param_history):
 def param_local_fluctuation(param_history):
     
     last_params = list(param_history[-1])
-    min_energy_inx = last_params.index(min(last_params[:-3]))
+    min_energy_inx = last_params.index(min(last_params[:-2]))
     energy_hist = [arr[min_energy_inx] for arr in param_history]
     
-    D_hist = [np.exp(arr[-2]) for arr in param_history]
-    sig_hist = [np.exp(arr[-1]) for arr in param_history]
+    r_hist = [np.exp(arr[-2]) for arr in param_history]
+    p_hist = [np.exp(arr[-1]) for arr in param_history]
     
     #define the strech which is assigned as local
     #if less than 5 iterations --> return 1
@@ -132,10 +136,10 @@ def param_local_fluctuation(param_history):
         loc_len = 5
        
     #max(arr)-min(arr) for the last 5 elements of this parameter in adam optimization
-    local_variation=np.array([max(a)-min(a) for a in [energy_hist[-loc_len:], D_hist[-loc_len:], sig_hist[-loc_len:]]])
+    local_variation=np.array([max(a)-min(a) for a in [energy_hist[-loc_len:], r_hist[-loc_len:], p_hist[-loc_len:]]])
         
     #return biggest ratio of local to absolute value
-    return max(local_variation/(np.array([energy_hist[-1], D_hist[-1], sig_hist[-1]])+1))
+    return max(local_variation/(np.array([energy_hist[-1], r_hist[-1], p_hist[-1]])+1))
 
 
 
@@ -161,7 +165,8 @@ def optimize_adam(plus, bg, plus_valid, bg_valid, var_thr=0.05,
     t = 0  #iterations
     f_t = 42 #initialize with random number
     epoch = 0
-
+    
+    min_iter = 20 #minimum rounds of parameter recording before checking for convergence
 
     #auc array tracks auc values
     param_history = []    
@@ -183,7 +188,7 @@ def optimize_adam(plus, bg, plus_valid, bg_valid, var_thr=0.05,
         
         #enumerate minibatches
         for i in range(n_batch):
-
+            
             nll_obj = nLL(pos_batches[i],bg_batches[i])
 
             t+=1
@@ -213,7 +218,8 @@ def optimize_adam(plus, bg, plus_valid, bg_valid, var_thr=0.05,
                 #track parameter evolution
                 param_history.append(theta_0)
                 
-                if len(param_history)>5:
+                #minimum iterations before checking for convergence: min_iter                
+                if len(param_history)>min_iter:
 
                     #stop when the parameters are stable (see param_local_fluctuation)
                     #OR stop when it took too long ($max_iterations)
@@ -227,6 +233,8 @@ def optimize_adam(plus, bg, plus_valid, bg_valid, var_thr=0.05,
             #updates the parameters by moving a step towards gradients
             theta_0_prev = theta_0 
             theta_0 = theta_0 - (alpha*m_cap)/(np.sqrt(v_cap)+epsilon)     
+            
+            
 
 
 # ### Import fasta files

@@ -37,6 +37,7 @@ class nLL:
             i, args = tup
             d_z_x_np = np.frombuffer(dz.get_obj(), dtype=np.float64).reshape(-1, self.N_p)
             z[i], d_z_x_np[:,i] = DP_Z_cy(args, self.X_p[i])
+                
             
     def assign_z_bg(self, tup):
             i, args = tup
@@ -53,7 +54,9 @@ class nLL:
         
         #exp parameters to make sure they are positive
         args = parameters.copy()
-        args[-n_pos:] = np.exp(args[-n_pos:])
+        args[-n_pos:-1] = np.exp(args[-n_pos:-1])
+        exp_p = np.exp(-args[-1])
+        args[-1] = 1/(1+exp_p)
     
     
         #define weights and derivatives as a multiprocessing array
@@ -85,7 +88,8 @@ class nLL:
         dll -= self.N_p * ( np.sum((self.pbg_xbg * d_z_xbg)/(z_xbg*z_xbg), axis=1 ) / np.sum(self.pbg_xbg*(np.ones(self.N_bg) - (np.ones(self.N_bg)/z_xbg))))
 
         #exp modify dLL for positive elements
-        dll[-n_pos:] = dll[-n_pos:]*args[-n_pos:]
+        dll[-n_pos:-1] = dll[-n_pos:-1]*args[-n_pos:-1]
+        dll[-1] = dll[-1]*args[-1]*(1-args[-1])
 
         #regularize some parameters
         if False:
