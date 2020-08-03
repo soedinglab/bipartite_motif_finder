@@ -9,9 +9,8 @@ float_dtype = np.NPY_DOUBLE
 np.import_array()
 
 cdef double cpi = np.pi
-cdef int l = 3 #l_A=l_B=3 nucleotides
 
-cpdef generate_kmer_inx():
+cpdef generate_kmer_inx(int l):
     cdef dict vals = {'A':0,'C':1,'G':2,'T':3}
     cdef dict kmer_inx = {}
     
@@ -22,10 +21,8 @@ cpdef generate_kmer_inx():
         kmer_inx[''.join(p)] = inx
     return kmer_inx
 
-kmer_inx = generate_kmer_inx()
-inx_kmer = {y:x for x,y in kmer_inx.items()}
 
-cpdef seq2int_cy(str sequence):
+cpdef seq2int_cy(str sequence, int l, kmer_inx):
     cdef int L = len(sequence)
     kmer_array = np.zeros(L, dtype=int)
     
@@ -91,9 +88,12 @@ cdef array_from_pointer(void* ptr, int size):
     
     
 @cython.boundscheck(False)  # Deactivate bounds checking   
-def DP_Z_cy(double[:] args, long[:] x):
+def DP_Z_cy(double[:] args, long[:] x, int l):
     
     cdef int L = len(x)
+    
+    kmer_inx = generate_kmer_inx(l)
+
     cdef int no_kmers = len(kmer_inx)
     cdef double cab = 1.0
 

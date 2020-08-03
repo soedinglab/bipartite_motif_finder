@@ -5,11 +5,13 @@ from dp_z import *
 
 
 class nLL:
-    def __init__(self, seqs_p, seqs_bg):
+    def __init__(self, seqs_p, seqs_bg, core_length):
         
         self.N_p = len(seqs_p)
         self.N_bg = len(seqs_bg)
-
+        
+        self.core_length = core_length
+        
         #calculate background probabilities:
 
         #include positive sequences in bg sequences if not there
@@ -29,20 +31,22 @@ class nLL:
         
         #add a padding nucleotide to the beginning to make the calculations stable, binding starts at
         #position i=l so the padded nucleotide has no effect.
-        self.X_p = [seq2int_cy('A' + x) for x in seqs_p] 
-        self.X_bg = [seq2int_cy('A' + x) for x in seqs_bg]
+        kmer_inx = generate_kmer_inx(core_length)
+        self.X_p = [seq2int_cy('A' + x , core_length, kmer_inx) for x in seqs_p] 
+        self.X_bg = [seq2int_cy('A' + x , core_length, kmer_inx) for x in seqs_bg]
+
 
         
     def assign_z_p(self, tup):
             i, args = tup
             d_z_x_np = np.frombuffer(dz.get_obj(), dtype=np.float64).reshape(-1, self.N_p)
-            z[i], d_z_x_np[:,i] = DP_Z_cy(args, self.X_p[i])
+            z[i], d_z_x_np[:,i] = DP_Z_cy(args, self.X_p[i], self.core_length)
                 
             
     def assign_z_bg(self, tup):
             i, args = tup
             d_z_xbg_np = np.frombuffer(dz.get_obj(), dtype=np.float64).reshape(-1, self.N_bg)
-            z[i], d_z_xbg_np[:,i] = DP_Z_cy(args, self.X_bg[i])
+            z[i], d_z_xbg_np[:,i] = DP_Z_cy(args, self.X_bg[i], self.core_length)
 
           
 
@@ -61,10 +65,10 @@ class nLL:
     
         #define weights and derivatives as a multiprocessing array
         z_x = mp.Array(ctypes.c_double, self.N_p)
-        d_z_x = mp.Array(ctypes.c_double, (2*len(kmer_inx)+ n_pos)*self.N_p)
+        d_z_x = mp.Array(ctypes.c_double, (2*(4**self.core_length) + n_pos)*self.N_p)
 
         z_xbg = mp.Array(ctypes.c_double, self.N_bg)
-        d_z_xbg = mp.Array(ctypes.c_double, (2*len(kmer_inx)+ n_pos)*self.N_bg) 
+        d_z_xbg = mp.Array(ctypes.c_double, (2*(4**self.core_length) + n_pos)*self.N_bg) 
         
         #parallelizing
         with multiprocessing.Pool(initializer=init, initargs=(z_x,d_z_x), processes=8) as pool:

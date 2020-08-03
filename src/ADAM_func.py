@@ -1,9 +1,9 @@
-def auc_evaluate(param, plus, bg):
+def auc_evaluate(param, plus, bg, core_length, kmer_inx):
     z_plus = np.zeros(len(plus))
     z_bg = np.zeros(len(bg))
     
-    seq_pos = [seq2int_cy('A' + x) for x in plus]
-    seq_bg = [seq2int_cy('A' + x) for x in bg]
+    seq_pos = [seq2int_cy('A' + x, core_length, kmer_inx) for x in plus]
+    seq_bg = [seq2int_cy('A' + x, core_length, kmer_inx) for x in bg]
     
     n_pos = 3
     #exp parameters to make sure they are positive
@@ -13,10 +13,10 @@ def auc_evaluate(param, plus, bg):
     args[-1] = exp_p/(1+exp_p)
         
     for i, x in enumerate(seq_pos):
-        z_plus[i], _ = DP_Z_cy(args, x)
+        z_plus[i], _ = DP_Z_cy(args, x, core_length)
     
     for i, x in enumerate(seq_bg):
-        z_bg[i], _ = DP_Z_cy(args, x)
+        z_bg[i], _ = DP_Z_cy(args, x, core_length)
         
     y_true = np.append(np.ones(len(plus)), np.zeros(len(bg)))
     y_score = np.append(z_plus, z_bg)
@@ -34,7 +34,9 @@ def partition (list_in, n):
     return [new_list[i::n] for i in range(n)]
 
 
-def plt_performance(plus, bg, plus_valid, bg_valid, param_history):
+def plt_performance(plus, bg, plus_valid, bg_valid, param_history, core_length, kmer_inx):
+    
+    inx_kmer = dict((v,k) for k,v in kmer_inx.items())
         
     fig, (ax1, ax2, ax3) = plt.subplots(1,3, figsize=(12,3.5))
     
@@ -67,8 +69,8 @@ def plt_performance(plus, bg, plus_valid, bg_valid, param_history):
         
     # AUC plots ================================
     
-    fpr_v, tpr_v, aucv = auc_evaluate(theta, plus_valid, bg_valid)
-    fpr_t, tpr_t, auct = auc_evaluate(theta, plus, bg)
+    fpr_v, tpr_v, aucv = auc_evaluate(theta, plus_valid, bg_valid, core_length, kmer_inx)
+    fpr_t, tpr_t, auct = auc_evaluate(theta, plus, bg, core_length, kmer_inx)
         
     ax1.plot([0, 1], [0, 1], 'k--')
     ax1.plot(fpr_v, tpr_v, label=f'validation (AUC={aucv:.2f})')
@@ -143,7 +145,7 @@ def param_local_fluctuation(param_history):
 
 
 
-def optimize_adam(plus, bg, plus_valid, bg_valid, var_thr=0.05, 
+def optimize_adam(plus, bg, plus_valid, bg_valid, core_length=3, var_thr=0.05, 
                   sequences_per_batch=100, max_iterations=1000, evaluate_after=None):
 
     #number of minibatches: number of positives/numbers per batch
@@ -178,6 +180,9 @@ def optimize_adam(plus, bg, plus_valid, bg_valid, var_thr=0.05,
     if evaluate_after is None:
         evaluate_after = len(plus)
     
+    # create kmer-index 
+    kmer_inx = generate_kmer_inx(core_length)
+    
     while(True):
         
         #split data into several minibatches
@@ -189,7 +194,7 @@ def optimize_adam(plus, bg, plus_valid, bg_valid, var_thr=0.05,
         #enumerate minibatches
         for i in range(n_batch):
             
-            nll_obj = nLL(pos_batches[i],bg_batches[i])
+            nll_obj = nLL(pos_batches[i],bg_batches[i], core_length)
 
             t+=1
 
@@ -226,7 +231,7 @@ def optimize_adam(plus, bg, plus_valid, bg_valid, var_thr=0.05,
                     
                     variability_index = param_local_fluctuation(param_history)
                     if variability_index<var_thr or t>max_iterations:
-                        auct, aucv = plt_performance(plus, bg, plus_valid, bg_valid, param_history)
+                        auct, aucv = plt_performance(plus, bg, plus_valid, bg_valid, param_history, core_length, kmer_inx)
                         np.savetxt(fname='param/'+ file_name +'.txt', X=np.append(theta_0,[f_t, auct, aucv]))
                         return theta_0, g_t               
                 
