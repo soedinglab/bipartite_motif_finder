@@ -12,10 +12,13 @@ exec(compile(open('src/ADAM_func.py', 'rb').read(), 'src/ADAM_func.py', 'exec'))
 #parse input argument(s)
 parser = argparse.ArgumentParser()
 parser.add_argument('factor_number', type=int)
+parser.add_argument('motif_length', type=int)
 parser.add_argument('no_tries', type=int)
+
 args = parser.parse_args()
 
 factor_number = args.factor_number
+core_length = args.motif_length
 no_tries = args.no_tries
 
 
@@ -52,10 +55,12 @@ pos_train, pos_test, pos_valid = partition(positive_set, 3)
 
 
 # ### ADAM optimization
-for i in range(no_tries):
+for i in range(0, no_tries):
+    
     np.random.seed(i)
-    Ea = np.random.normal(loc=12.0, scale=1.0, size=len(kmer_inx))
-    Eb = np.random.normal(loc=12.0, scale=1.0, size=len(kmer_inx))
+    
+    Ea = np.random.normal(loc=12.0, scale=1.0, size=4**core_length)
+    Eb = np.random.normal(loc=12.0, scale=1.0, size=4**core_length)
     sf = np.log(10000)
     r = np.log(np.random.uniform(1,5))
     p = np.log(np.random.uniform(0,1))
@@ -66,13 +71,17 @@ for i in range(no_tries):
     
     seq_per_batch = 500
     
-    file_name = f'selex/{factor}_4vs0_{i}'
+    file_name = f'selex/{factor}_4vs0_{i}_cs{core_length}'
 
     maxiter=1000
-    x_opt = optimize_adam(pos_train, bg_train, 
-                          pos_valid, bg_valid, 
-                          var_thr, sequences_per_batch=seq_per_batch, 
-                          max_iterations=maxiter, evaluate_after=4000)
+    x_opt = optimize_adam(
+                            pos_train, bg_train, pos_valid, bg_valid, 
+                            core_length=core_length,
+                            var_thr=var_thr,
+                            sequences_per_batch=seq_per_batch, 
+                            max_iterations=maxiter, 
+                            evaluate_after=4000
+    )
 
 
 
