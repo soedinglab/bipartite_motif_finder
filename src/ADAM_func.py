@@ -146,7 +146,7 @@ def param_local_fluctuation(param_history):
 
 
 def optimize_adam(plus, bg, plus_valid, bg_valid, core_length=3, var_thr=0.05, 
-                  sequences_per_batch=100, max_iterations=1000, evaluate_after=None):
+                  sequences_per_batch=100, max_iterations=1000, evaluate_after=None, save_files=True):
 
     #number of minibatches: number of positives/numbers per batch
     n_batch = int(len(plus)/sequences_per_batch)
@@ -231,8 +231,9 @@ def optimize_adam(plus, bg, plus_valid, bg_valid, core_length=3, var_thr=0.05,
                     
                     variability_index = param_local_fluctuation(param_history)
                     if variability_index<var_thr or t>max_iterations:
-                        auct, aucv = plt_performance(plus, bg, plus_valid, bg_valid, param_history, core_length, kmer_inx)
-                        np.savetxt(fname='param/'+ file_name +'.txt', X=np.append(theta_0,[f_t, auct, aucv]))
+                        if save_files:
+                            auct, aucv = plt_performance(plus, bg, plus_valid, bg_valid, param_history, core_length, kmer_inx)
+                            np.savetxt(fname='param/'+ file_name +'.txt', X=np.append(theta_0,[f_t, auct, aucv]))
                         return theta_0, g_t               
                 
             #updates the parameters by moving a step towards gradients
