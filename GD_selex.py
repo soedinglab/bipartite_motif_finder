@@ -12,8 +12,8 @@ exec(compile(open('src/ADAM_func.py', 'rb').read(), 'src/ADAM_func.py', 'exec'))
 #parse input argument(s)
 parser = argparse.ArgumentParser()
 parser.add_argument('factor_number', type=int)
-parser.add_argument('motif_length', type=int)
-parser.add_argument('no_tries', type=int)
+parser.add_argument('--motif_length', action="store", type=int, default=3)
+parser.add_argument('--no_tries', action="store", type=int, default=5)
 
 args = parser.parse_args()
 
