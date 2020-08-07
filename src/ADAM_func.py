@@ -53,7 +53,7 @@ def plt_performance(plus, bg, plus_valid, bg_valid, param_history, core_length, 
     
     core2 = {}
     for i in range(len(kmer_inx)):
-        core2[inx_kmer[i]] = theta[i+64]
+        core2[inx_kmer[i]] = theta[i+len(kmer_inx)]
     core2 = pd.Series(core2).sort_values(ascending=True)
     
     r = np.exp(theta[-2])
