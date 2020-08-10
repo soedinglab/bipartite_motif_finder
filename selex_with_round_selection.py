@@ -72,8 +72,6 @@ for i in range(len(selex_files)):
 #parameter initialization
 np.random.seed(0)
 
-core_length = 3
-
 Ea = np.random.normal(loc=12.0, scale=1.0, size=4**core_length)
 Eb = np.random.normal(loc=12.0, scale=1.0, size=4**core_length)
 sf = np.log(10000)
@@ -113,7 +111,7 @@ for bg_inx in range(0,len(selex_files)-1):
     #calculate average auc obtained with theta_0
     avg_auc.append(np.mean(auc_list))
     
-np.savetxt(fname='param/'+ factor +'_avg_auc.txt', X=np.array(avg_auc))
+np.savetxt(fname='param/selex/cl{core_length}'+ factor +'_avg_auc.txt', X=np.array(avg_auc))
 bg_round = np.argmax(avg_auc)
 pos_round = bg_round+1
 
@@ -129,7 +127,7 @@ pos_train, pos_test = partition(positive_set, 2)
 
 
 # ### ADAM optimization
-for i in range(0, no_tries):
+for i in range(5, 5+no_tries):
     
     np.random.seed(i)
     
@@ -145,7 +143,7 @@ for i in range(0, no_tries):
     
     seq_per_batch = 500
     
-    file_name = f'selex/{factor}_{cycles[pos_round]}vs{cycles[bg_round]}_cs{core_length}_{i}'
+    file_name = f'selex/cl{core_length}/{factor}_{cycles[pos_round]}vs{cycles[bg_round]}_cs{core_length}_{i}'
 
     maxiter=1000
     x_opt = optimize_adam(
