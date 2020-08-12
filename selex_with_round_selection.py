@@ -111,7 +111,7 @@ for bg_inx in range(0,len(selex_files)-1):
     #calculate average auc obtained with theta_0
     avg_auc.append(np.mean(auc_list))
     
-np.savetxt(fname='param/selex/cl{core_length}'+ factor +'_avg_auc.txt', X=np.array(avg_auc))
+np.savetxt(fname=f'param/selex/cl{core_length}'+ factor +'_avg_auc.txt', X=np.array(avg_auc))
 bg_round = np.argmax(avg_auc)
 pos_round = bg_round+1
 
@@ -127,7 +127,7 @@ pos_train, pos_test = partition(positive_set, 2)
 
 
 # ### ADAM optimization
-for i in range(5, 5+no_tries):
+for i in range(0, no_tries):
     
     np.random.seed(i)
     
