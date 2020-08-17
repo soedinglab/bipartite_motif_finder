@@ -72,7 +72,7 @@ for bc in factor_barcodes:
 
 
 #select cycles
-avg_auc_file = os.path.join('../RBP_motif_cluster/scripts/param/selex/', f'cl3{factor}_avg_auc.txt')
+avg_auc_file = os.path.join('param/selex/', f'cl3{factor}_avg_auc.txt')
 if os.path.isfile(avg_auc_file):
     avg_auc = np.loadtxt(avg_auc_file)
     bg_round = np.argmax(avg_auc)
@@ -87,8 +87,8 @@ print('ps round chosen:' + str(files_by_bc[0][pos_round].split('_')[3]))
 
 file_name = f'{factor}_' + str(files_by_bc[0][bg_round].split('_')[3]) + 'vs' + str(files_by_bc[0][pos_round].split('_')[3])
 
-bg_file  = os.path.join('../rbp_scratch/data', files_by_bc[0][bg_round])
-pos_file = os.path.join('../rbp_scratch/data', files_by_bc[0][pos_round])
+bg_file  = os.path.join('/cbscratch/salma/selex_taipale/data', files_by_bc[0][bg_round])
+pos_file = os.path.join('/cbscratch/salma/selex_taipale/data', files_by_bc[0][pos_round])
 
 bg = parse_fastq(bg_file)
 ps = parse_fastq(pos_file)
