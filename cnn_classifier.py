@@ -25,9 +25,11 @@ from sklearn.metrics import auc
 #parse input argument(s)
 parser = argparse.ArgumentParser()
 parser.add_argument('factor_number', type=int)
+parser.add_argument('--epochs', action="store", type=int, default=50)
 
 args = parser.parse_args()
 factor_number = args.factor_number
+epochs = args.epochs
 
 
 # ## Import data
@@ -166,13 +168,9 @@ def seq_CNN(input_shape):
 seq_cnn = seq_CNN(X_train.shape[1:])
 
 #compile the model
-seq_cnn.compile(optimizer = "adam", loss = "binary_crossentropy", metrics=[tf.keras.metrics.AUC(name='auc')])
+seq_cnn.compile(optimizer = "adam", loss = "binary_crossentropy", metrics=[tf.keras.metrics.AUC(name='auc', num_thresholds=int(1e4))])
 
-seq_cnn.fit(x = X_train, y = y_train, epochs = 30, batch_size = 64, validation_data=(X_test, y_test))
-
-
-with open(f'cnn/{file_name}.pickle', 'wb') as file:
-    pickle.dump(seq_cnn.history.history, file)
+seq_cnn.fit(x=X_train, y=y_train, epochs=epochs, batch_size = 512, validation_data=(X_test, y_test))
 
 
 
@@ -182,7 +180,7 @@ fpr_keras, tpr_keras, thresholds_keras = roc_curve(y_test, y_pred_keras)
 
 auc_keras = auc(fpr_keras, tpr_keras)
 
-fig, (ax1,ax2) = plt.subplots(1, 2, figsize=(7,3))
+fig, (ax1,ax2) = plt.subplots(1, 2, figsize=(8,3))
 plt.subplots_adjust(wspace=0.4)
 
 ax1.plot([0, 1], [0, 1], 'k--')
@@ -200,8 +198,14 @@ xpos = np.arange(1,len(val_auc)+1)
 ax2.plot(xpos, val_auc, label='validation AUC')
 ax2.plot(xpos, train_auc, label='training AUC')
 ax2.set_xlabel('epochs')
-ax2.set_ylabel('AUC')
+ax2.set_ylabel('approximated AUC')
 ax2.legend(loc='best')
 
 fig.suptitle(file_name)
 plt.savefig('cnn/'+ file_name +'.pdf', bbox_inches='tight')
+
+
+with open(f'cnn/{file_name}.pickle', 'wb') as file:
+    pickle.dump((auc_keras, seq_cnn.history.history), file)
+    
+
