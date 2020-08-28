@@ -65,13 +65,20 @@ void sum_mat_rows(double* out, double* mat, int n_row, int n_col)
     }
 }
 
-void initialize_DerParams(DerParams* params, int L, int no_kmers) {
+void initialize_DerParams(DerParams* params, int L, int no_kmers, int no_struct) {
 
     params->der_a = malloc_simd_double(sizeof(c_float_t) * no_kmers);
     initialize_array(params->der_a, 0, no_kmers);
 
     params->der_b = malloc_simd_double(sizeof(c_float_t) * no_kmers);
     initialize_array(params->der_b, 0, no_kmers);
+
+    params->der_as = malloc_simd_double(sizeof(c_float_t) * no_struct);
+    initialize_array(params->der_as, 0, no_struct);
+
+    params->der_bs = malloc_simd_double(sizeof(c_float_t) * no_struct);
+    initialize_array(params->der_bs, 0, no_struct);
+
 
     params->za_Ea_derivatives = malloc_simd_double(sizeof(c_float_t) * no_kmers * L);
     initialize_array(params->za_Ea_derivatives, 0, no_kmers * L);
@@ -86,16 +93,35 @@ void initialize_DerParams(DerParams* params, int L, int no_kmers) {
     initialize_array(params->zb_Eb_derivatives, 0, no_kmers * L);
 
 
+    params->za_Eas_derivatives = malloc_simd_double(sizeof(c_float_t) * no_struct * L);
+    initialize_array(params->za_Eas_derivatives, 0, no_struct * L);
+
+    params->za_Ebs_derivatives = malloc_simd_double(sizeof(c_float_t) * no_struct * L);
+    initialize_array(params->za_Ebs_derivatives, 0, no_struct * L);
+
+    params->zb_Eas_derivatives = malloc_simd_double(sizeof(c_float_t) * no_struct * L);
+    initialize_array(params->zb_Eas_derivatives, 0, no_struct * L);
+
+    params->zb_Ebs_derivatives = malloc_simd_double(sizeof(c_float_t) * no_struct * L);
+    initialize_array(params->zb_Ebs_derivatives, 0, no_struct * L);
+
+
 }
 
 void deinitialize_DerParams(DerParams* params) {
 
     free(params->der_a);
     free(params->der_b);
+    free(params->der_as);
+    free(params->der_bs);
     free(params->za_Ea_derivatives);
     free(params->za_Eb_derivatives);
     free(params->zb_Ea_derivatives);
     free(params->zb_Eb_derivatives);
+    free(params->za_Eas_derivatives);
+    free(params->za_Ebs_derivatives);
+    free(params->zb_Eas_derivatives);
+    free(params->zb_Ebs_derivatives);
 
 }
 
@@ -109,10 +135,11 @@ void assign_za_c(int i, double* za, double* zb, double concentration_times_energ
     za[i] = (za_tmp)*concentration_times_energy;
 }
 
-void assign_zb_c(long* x, int i, double* za, double* zb, double* Eb, double cab, double sf, double r, double p, int l)
+void assign_zb_c(long* x, long* q, int i, double* za, double* zb, double* Eb, double* Ebs, double cab, 
+                    double sf, double r, double p, int l)
 {    
     double zb_temp = 0;
-    double energy = exp(-Eb[x[i]]);
+    double energy = exp(-Eb[x[i]]-Ebs[q[i]]);
     for (int j=0; j<i-l+1; j++)
     {
         zb_temp += za[j]*cb_c(i-j-l, sf, r, p);
@@ -123,53 +150,114 @@ void assign_zb_c(long* x, int i, double* za, double* zb, double* Eb, double cab,
 }
 
 
-void assign_za_E_derivatives_c(long* x, int i, double* za, double* zb, int L, int l, int no_kmers,
-                                 DerParams* params, double* Ea, double* Eb, double cab)
+void assign_za_E_derivatives_c(long* x, long* q, int i, double* za, double* zb, int l, int no_kmers, int no_struct,
+                                 DerParams* params, double* Ea, double* Esa, double cab)
 { 
+    //retrieve derivatives
     double* za_Ea_derivatives = params->za_Ea_derivatives;
     double* zb_Ea_derivatives = params->zb_Ea_derivatives;
     double* za_Eb_derivatives = params->za_Eb_derivatives;
     double* zb_Eb_derivatives = params->zb_Eb_derivatives;
+
+    double* za_Eas_derivatives = params->za_Eas_derivatives;
+    double* zb_Eas_derivatives = params->zb_Eas_derivatives;
+    double* za_Ebs_derivatives = params->za_Ebs_derivatives;
+    double* zb_Ebs_derivatives = params->zb_Ebs_derivatives;
+
     double* der_a = params->der_a;
     double* der_b = params->der_b;
 
-    double energy = exp(-Ea[x[i]])*cab;
+    double* der_as = params->der_as;
+    double* der_bs = params->der_bs;
+
+    //precompute concentration*e^binding_energy
+    double energy = exp(-Ea[x[i]]-Esa[q[i]])*cab;
+
+    //calculates d(zb)/d(theta)
     for (int inx=0; inx<no_kmers; inx++)
     {  
         der_a[inx] = zb_Ea_derivatives[(i-l)*no_kmers + inx]; 
         der_b[inx] = zb_Eb_derivatives[(i-l)*no_kmers + inx];
     }
-    der_a[x[i]] -= zb[i-l];
 
+    for (int inx=0; inx<no_struct; inx++)
+    {  
+        der_as[inx] = zb_Eas_derivatives[(i-l)*no_struct + inx]; 
+        der_bs[inx] = zb_Ebs_derivatives[(i-l)*no_struct + inx];
+    }
+
+    //printf("step 1 %0.3f \t", der_as[0]);
+
+    // -zb(i-l)
+    der_a[x[i]] -= zb[i-l];
+    der_as[q[i]] -= zb[i-l];
+
+    //printf("step 2 %0.3f \t", der_as[0]);
+
+    // sum(over j): [d(za)/d(theta)-za]
     for (int j=0; j<i-l+1; ++j)
     {
         add_array(der_a, der_a, za_Ea_derivatives + j*no_kmers, no_kmers);
         add_array(der_b, der_b, za_Eb_derivatives + j*no_kmers, no_kmers);
         der_a[x[i]] -= za[j];
+
+        add_array(der_as, der_as, za_Eas_derivatives + j*no_struct, no_struct);
+        add_array(der_bs, der_bs, za_Ebs_derivatives + j*no_struct, no_struct);
+        der_as[q[i]] -= za[j];
     }
 
+    /*for (int j=0; j<no_struct; ++j)
+    {
+        printf("der_bs =  %0.3f \n", der_bs[j]);
+    }*/
+
+    //everything times concentration*boltzman
     mul_constant(za_Ea_derivatives + i*no_kmers, der_a, energy, no_kmers);
     mul_constant(za_Eb_derivatives + i*no_kmers, der_b, energy, no_kmers);
+
+    //everything times concentration*boltzman
+    mul_constant(za_Eas_derivatives + i*no_struct, der_as, energy, no_struct);
+    mul_constant(za_Ebs_derivatives + i*no_struct, der_bs, energy, no_struct);
+    
 }
 
 
-void assign_zb_E_derivatives_c(long* x, int i, double* za, double* zb, int L, int l, int no_kmers,
-                                 DerParams* params, double* Ea, double* Eb, double cab, double sf, double r, double p)
+void assign_zb_E_derivatives_c(long* x, long* q, int i, double* za, double* zb, int l, int no_kmers, int no_struct,
+                                 DerParams* params, double* Eb, double* Ebs, double cab, double sf, double r, double p)
  {
+    //retrieve derivatives
     double* za_Ea_derivatives = params->za_Ea_derivatives;
     double* zb_Ea_derivatives = params->zb_Ea_derivatives;
     double* za_Eb_derivatives = params->za_Eb_derivatives;
     double* zb_Eb_derivatives = params->zb_Eb_derivatives;
+
+    double* za_Eas_derivatives = params->za_Eas_derivatives;
+    double* zb_Eas_derivatives = params->zb_Eas_derivatives;
+    double* za_Ebs_derivatives = params->za_Ebs_derivatives;
+    double* zb_Ebs_derivatives = params->zb_Ebs_derivatives;
+
     double* der_a = params->der_a;
     double* der_b = params->der_b;
 
-    double energy = exp(-Eb[x[i]]);
+    double* der_as = params->der_as;
+    double* der_bs = params->der_bs;
+
+    //precompute concentration*e^binding_energy
+    double energy = exp(-Eb[x[i]]-Ebs[q[i]]);
+
+    //d(zb(i-1))/d(theta)
     for (int inx=0; inx<no_kmers; inx++)
     {   
         der_b[inx] = zb_Eb_derivatives[(i-1)*no_kmers + inx];
         der_a[inx] = zb_Ea_derivatives[(i-1)*no_kmers + inx];
     }
+    for (int inx=0; inx<no_struct; inx++)
+    {   
+        der_bs[inx] = zb_Ebs_derivatives[(i-1)*no_struct + inx];
+        der_as[inx] = zb_Eas_derivatives[(i-1)*no_struct + inx];
+    }
   
+    //sum(over j): concentration_times_energy*(d(za)/d(theta)-za)
     for (int j=0; j<i-l+1; ++j)
     {
         double concentration_times_energy = cb_c(i-j-l, sf, r, p) * energy;
@@ -178,18 +266,37 @@ void assign_zb_E_derivatives_c(long* x, int i, double* za, double* zb, int L, in
 
         der_b[x[i]] -= concentration_times_energy*za[j];
 
+        add_mul_constant(der_bs, der_bs, za_Ebs_derivatives + j*no_struct, concentration_times_energy, no_struct);
+        add_mul_constant(der_as, der_as, za_Eas_derivatives + j*no_struct, concentration_times_energy, no_struct);
+
+        der_bs[q[i]] -= concentration_times_energy*za[j];       
+
     }
 
+    //cab*boltzmann*(d(zb)/d(theta)-za)
     double conc = energy*cab;
     add_mul_constant(der_b, der_b, zb_Eb_derivatives + (i-l)*no_kmers, conc, no_kmers);
     add_mul_constant(der_a, der_a, zb_Ea_derivatives + (i-l)*no_kmers, conc, no_kmers);
 
     der_b[x[i]] -= cab * zb[i-l]*energy;
 
+    add_mul_constant(der_bs, der_bs, zb_Ebs_derivatives + (i-l)*no_struct, conc, no_struct);
+    add_mul_constant(der_as, der_as, zb_Eas_derivatives + (i-l)*no_struct, conc, no_struct);
+
+    der_bs[q[i]] -= cab * zb[i-l]*energy;
+
+    //final assignment
     for (int inx=0; inx<no_kmers; inx++)
     {
         zb_Ea_derivatives[i*no_kmers + inx] = der_a[inx];
         zb_Eb_derivatives[i*no_kmers + inx] = der_b[inx];
+    }
+
+    //final assignment
+    for (int inx=0; inx<no_struct; inx++)
+    {
+        zb_Eas_derivatives[i*no_struct + inx] = der_as[inx];
+        zb_Ebs_derivatives[i*no_struct + inx] = der_bs[inx];
     }
  }
 
