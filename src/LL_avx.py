@@ -15,7 +15,7 @@ class nLL:
         #calculate background probabilities:
 
         #include positive sequences in bg sequences if not there
-        X_bg_t = list(set(np.concatenate([seqs_p[:,0],seqs_bg[:,0]]).ravel()))  #number of unique sequences
+        X_bg_t = list(set(np.concatenate([seqs_p[:,0],seqs_bg[:,0]])))  #number of unique sequences
         
         #dictionary with sequences as keys and their frequencies as values
         no_sequences = len(X_bg_t)
