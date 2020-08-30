@@ -296,3 +296,35 @@ def parse_seq(file_name):
     with open(file_name,'r') as f:
         seq = [line.rstrip() for line in f]
     return seq
+
+def parse_rnafold(input_path, uracil=True):
+    '''
+    parses RNAfold single-file output which looks like this:
+    >header
+    GGGAGGAUUGCGUUAGUUAUGUUAUGAGUUACGUUGUGGG
+    ((.((((.(.((((...)))).).)))).))... ( -3.80)
+    
+    input:
+        input_path: path to RNAfold output file
+        
+    output:
+        seq_struct_tuple: tuple of sequence-structure pairs        
+    '''
+    
+    #read all lines
+    with open(input_path,'r') as f:
+        seq = [line.rstrip() for line in f]
+        
+    #remove the energy from the end of structure output
+    if uracil:
+        base4 = 'U'
+    else:
+        base4 = 'T'
+        
+    sequences = [sequence.replace('N', random.sample(['A','C','G', base4],1)[0]) for sequence in seq[1::3]]
+    structures = [structure.split(' ')[0] for structure in seq[2::3]]
+    
+    
+    seq_struct_tuple = np.array(list(zip(sequences, structures)))
+    
+    return seq_struct_tuple
