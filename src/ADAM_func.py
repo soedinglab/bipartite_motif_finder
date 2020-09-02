@@ -67,8 +67,8 @@ def plt_performance(plus, bg, plus_valid, bg_valid, param_history, core_length, 
     core1_q = {}
     core2_q = {}    
     for i in range(no_structs):
-        core1_q[inx_struct[i]] = theta[i]
-        core2_q[inx_struct[i]] = theta[i+no_structs]
+        core1_q[inx_struct[i]] = theta[i+no_kmers*2]
+        core2_q[inx_struct[i]] = theta[i+no_kmers*2+no_structs]
 
     core1_q = pd.Series(core1_q).sort_values(ascending=True)  
     core2_q = pd.Series(core2_q).sort_values(ascending=True)
