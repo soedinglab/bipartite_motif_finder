@@ -47,8 +47,9 @@ selex_files = files_by_bc[0]
 cycles = np.array([int(s.split('_')[3]) for s in selex_files])
 avg_auc = []
 
-selex_files = [os.path.join('/cbscratch/salma/selex_taipale/data', f) for f in selex_files]
+selex_files = [os.path.join('/cbscratch/salma/selex_taipale/data_struct', f.replace('fastq','struct')) for f in selex_files]
 
+'''
 train_sets = []
 test_sets = []
 
@@ -112,18 +113,25 @@ for bg_inx in range(0,len(selex_files)-1):
     avg_auc.append(np.mean(auc_list))
     
 np.savetxt(fname=f'param/selex/cl{core_length}'+ factor +'_avg_auc.txt', X=np.array(avg_auc))
+
 bg_round = np.argmax(avg_auc)
 pos_round = bg_round+1
+'''
 
-background_set = parse_fastq(selex_files[bg_round])
-background_set   = [seq.replace('N', random.sample(['A','T','C','G'],1)[0]) for seq in background_set]
+try:
+    avg_auc = np.loadtxt(f'param/selex/cl{core_length}'+ factor +'_avg_auc.txt')
 
-positive_set = parse_fastq(selex_files[pos_round])
-positive_set = [seq.replace('N', random.sample(['A','T','C','G'],1)[0]) for seq in positive_set]
+    bg_round = np.argmax(avg_auc)
+    pos_round = bg_round+1
+except:
+    pos_round = -1
+    bg_round = -2
 
-bg_train, bg_test = partition(background_set, 2)
-pos_train, pos_test = partition(positive_set, 2)
+X_ps = parse_rnafold(selex_files[pos_round])
+X_bg = parse_rnafold(selex_files[bg_round])
 
+pos_train, pos_test = partition(X_ps, 2)
+bg_train, bg_test = partition(X_bg, 2)
 
 
 # ### ADAM optimization
@@ -131,8 +139,8 @@ for i in range(0, no_tries):
     
     np.random.seed(i)
     
-    Ea = np.random.normal(loc=12.0, scale=1.0, size=4**core_length)
-    Eb = np.random.normal(loc=12.0, scale=1.0, size=4**core_length)
+    Ea = np.random.normal(loc=12.0, scale=1.0, size=8**core_length)
+    Eb = np.random.normal(loc=12.0, scale=1.0, size=8**core_length)
     sf = np.log(10000)
     r = np.log(np.random.uniform(1,5))
     p = np.log(np.random.uniform(0,1))
@@ -141,9 +149,9 @@ for i in range(0, no_tries):
     
     var_thr = 0.03
     
-    seq_per_batch = 500
+    seq_per_batch = 512
     
-    file_name = f'selex/cl{core_length}/{factor}_{cycles[pos_round]}vs{cycles[bg_round]}_cs{core_length}_{i}'
+    file_name = f'selex/cl{core_length}_extended/{factor}_{cycles[pos_round]}vs{cycles[bg_round]}_cs{core_length}_{i}'
 
     maxiter=1000
     x_opt = optimize_adam(
