@@ -75,12 +75,13 @@ def plt_performance(plus, bg, plus_valid, bg_valid, param_history, core_length, 
     
     r = np.exp(theta[-2])
     p = 1/(1+np.exp(-theta[-1]))
+    dist = ((1-p)*r)/p
     
 
     # set plot title ===========================
 
     local_fluctuation = param_local_fluctuation(param_history, no_kmers)
-    fig.suptitle(f'{core1_s.index[0]}({core1_s.values[0]:.2f}) -- r={r:.1f},p={p:.1f} -- {core2_s.index[0]}({core2_s.values[0]:.2f})\n' +
+    fig.suptitle(f'{core1_s.index[0]}({core1_s.values[0]:.2f}) -- distance={dist:.1f} -- {core2_s.index[0]}({core2_s.values[0]:.2f})\n' +
     f'{core1_s.index[1]}({core1_s.values[1]:.2f}) ----------------- {core2_s.index[1]}({core2_s.values[1]:.2f})\n' +
     f'{core1_s.index[2]}({core1_s.values[2]:.2f}) ----------------- {core2_s.index[2]}({core2_s.values[2]:.2f})\n' +
     f'variation index: {local_fluctuation:.2f}', horizontalalignment='left', fontsize=12, x=0.1, y=1.2)
