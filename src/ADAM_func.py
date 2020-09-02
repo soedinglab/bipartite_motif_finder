@@ -257,3 +257,42 @@ def parse_seq(file_name):
     with open(file_name,'r') as f:
         seq = [line.rstrip() for line in f]
     return seq
+
+def combine_structure(sequence, structure):
+    new_rep = list(sequence)
+    for i, struct in enumerate(list(structure)):
+        if struct in [')','(']:
+            new_rep[i] = new_rep[i].lower()
+            
+    return ''.join(new_rep)
+
+def parse_rnafold(input_path, uracil=True):
+    '''
+    parses RNAfold single-file output which looks like this:
+    >header
+    GGGAGGAUUGCGUUAGUUAUGUUAUGAGUUACGUUGUGGG
+    ((.((((.(.((((...)))).).)))).))... ( -3.80)
+    
+    input:
+        input_path: path to RNAfold output file
+        
+    output:
+        encoded: uppercap for unpaired and lowercap for paired RNA        
+    '''
+    
+    #read all lines
+    with open(input_path,'r') as f:
+        seq = [line.rstrip() for line in f]
+        
+    #remove the energy from the end of structure output
+    if uracil:
+        base4 = 'U'
+    else:
+        base4 = 'T'
+        
+    sequences = [sequence.replace('N', random.sample(['A','C','G', base4],1)[0]) for sequence in seq[1::3]]
+    structures = [structure.split(' ')[0] for structure in seq[2::3]]
+    
+    encoded = list(map(combine_structure, sequences, structures))
+    
+    return encoded
