@@ -11,13 +11,15 @@ np.import_array()
 cdef double cpi = np.pi
 
 cpdef generate_kmer_inx(int l):
-    cdef dict vals = {'A':0,'C':1,'G':2,'T':3}
+
+    cdef dict vals = {'A':0,'C':1,'G':2, 'U':3, 'a':4, 'c':5, 'g':6, 'u':7}
+    cdef int alphabet_size = 8
     cdef dict kmer_inx = {}
     
     for p in list(itertools.product(vals.keys(), repeat=l)):
         inx = 0
         for j,base in enumerate(p):
-            inx += (4**j)*vals[base] 
+            inx += (alphabet_size**j)*vals[base] 
         kmer_inx[''.join(p)] = inx
     return kmer_inx
 

@@ -32,6 +32,7 @@ class nLL:
         #add a padding nucleotide to the beginning to make the calculations stable, binding starts at
         #position i=l so the padded nucleotide has no effect.
         kmer_inx = generate_kmer_inx(core_length)
+        self.no_kmers = len(kmer_inx)
         self.X_p = [seq2int_cy('A' + x , core_length, kmer_inx) for x in seqs_p] 
         self.X_bg = [seq2int_cy('A' + x , core_length, kmer_inx) for x in seqs_bg]
 
@@ -65,10 +66,10 @@ class nLL:
     
         #define weights and derivatives as a multiprocessing array
         z_x = mp.Array(ctypes.c_double, self.N_p)
-        d_z_x = mp.Array(ctypes.c_double, (2*(4**self.core_length) + n_pos)*self.N_p)
+        d_z_x = mp.Array(ctypes.c_double, (2*self.no_kmers + n_pos)*self.N_p)
 
         z_xbg = mp.Array(ctypes.c_double, self.N_bg)
-        d_z_xbg = mp.Array(ctypes.c_double, (2*(4**self.core_length) + n_pos)*self.N_bg) 
+        d_z_xbg = mp.Array(ctypes.c_double, (2*self.no_kmers + n_pos)*self.N_bg) 
         
         #parallelizing
         with multiprocessing.Pool(initializer=init, initargs=(z_x,d_z_x), processes=8) as pool:
