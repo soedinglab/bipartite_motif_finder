@@ -47,8 +47,9 @@ selex_files = files_by_bc[0]
 cycles = np.array([int(s.split('_')[3]) for s in selex_files])
 avg_auc = []
 
-selex_files = [os.path.join('/cbscratch/salma/selex_taipale/data', f) for f in selex_files]
+selex_files = [os.path.join('/cbscratch/salma/selex_taipale/data_struct', f.replace('fastq','struct')) for f in selex_files]
 
+'''
 train_sets = []
 test_sets = []
 
@@ -111,44 +112,60 @@ for bg_inx in range(0,len(selex_files)-1):
     #calculate average auc obtained with theta_0
     avg_auc.append(np.mean(auc_list))
     
+
 np.savetxt(fname=f'param/selex/cl{core_length}'+ factor +'_avg_auc.txt', X=np.array(avg_auc))
-bg_round = np.argmax(avg_auc)
-pos_round = bg_round+1
+'''
+try:
+    avg_auc = np.loadtxt(f'param/selex/cl{core_length}'+ factor +'_avg_auc.txt')
 
-background_set = parse_fastq(selex_files[bg_round])
-background_set   = [seq.replace('N', random.sample(['A','T','C','G'],1)[0]) for seq in background_set]
+    bg_round = np.argmax(avg_auc)
+    pos_round = bg_round+1
+except:
+    pos_round = -1
+    bg_round = -2
 
-positive_set = parse_fastq(selex_files[pos_round])
-positive_set = [seq.replace('N', random.sample(['A','T','C','G'],1)[0]) for seq in positive_set]
+X_ps = parse_rnafold(selex_files[pos_round])
+X_bg = parse_rnafold(selex_files[bg_round])
 
-bg_train, bg_test = partition(background_set, 2)
-pos_train, pos_test = partition(positive_set, 2)
+y_ps = np.ones(len(X_ps))
+y_bg = np.ones(len(X_bg))
 
-
+ps_train, ps_test, _ , _ = train_test_split(X_ps, y_ps, test_size=0.2, random_state=42)
+bg_train, bg_test, _ , _ = train_test_split(X_bg, y_bg, test_size=0.2, random_state=42)
 
 # ### ADAM optimization
 for i in range(0, no_tries):
     
     np.random.seed(i)
     
-    Ea = np.random.normal(loc=12.0, scale=1.0, size=4**core_length)
-    Eb = np.random.normal(loc=12.0, scale=1.0, size=4**core_length)
+    core_length = 3
+    kmer_inx = generate_kmer_inx(core_length)
+    struct_inx = generate_struct_inx(core_length)
+    no_kmers = len(set(kmer_inx.values()))
+    no_struct = len(set(struct_inx.values()))
+
+
+    Ea = np.random.normal(loc=12.0, scale=1.0, size=no_kmers)
+    Eb = np.random.normal(loc=12.0, scale=1.0, size=no_kmers)
+    Eas = np.random.normal(loc=12.0, scale=1.0, size=no_struct)
+    Ebs = np.random.normal(loc=12.0, scale=1.0, size=no_struct)
+
     sf = np.log(10000)
     r = np.log(np.random.uniform(1,5))
     p = np.log(np.random.uniform(0,1))
 
-    parameters = np.concatenate([x.ravel() for x in [Ea, Eb, np.array([sf, r, p])]])
+    parameters = np.concatenate([x.ravel() for x in [Ea, Eb, Eas, Ebs, np.array([sf, r, p])]])
     
     var_thr = 0.03
     
-    seq_per_batch = 500
+    seq_per_batch = 512
     
-    file_name = f'selex/cl{core_length}/{factor}_{cycles[pos_round]}vs{cycles[bg_round]}_cs{core_length}_{i}'
+    file_name = f'selex/cl{core_length}_struct/{factor}_{cycles[pos_round]}vs{cycles[bg_round]}_cs{core_length}_{i}'
 
     maxiter=1000
     x_opt = optimize_adam(
-                            pos_train, bg_train, 
-                            pos_test, bg_test, 
+                            ps_train, bg_train, 
+                            ps_test, bg_test, 
                             core_length=core_length,
                             var_thr=var_thr,
                             sequences_per_batch=seq_per_batch, 
