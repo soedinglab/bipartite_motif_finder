@@ -1,3 +1,44 @@
+def auc_evaluate_arbitrary_length(param, ps_valid, bg_valid, core_length, kmer_inx, length=40):
+    
+    ps = split_seqs(ps_valid, length)
+    bg = split_seqs(bg_valid, length)
+    
+    z_ps = np.zeros(len(ps))
+    z_bg = np.zeros(len(bg))
+    
+    seq_ps = [[seq2int_cy('A' + x, core_length, kmer_inx) for x in arr] for arr in ps]
+    seq_bg = [[seq2int_cy('A' + x, core_length, kmer_inx) for x in arr] for arr in bg]
+    
+    n_pos = 3
+    #exp parameters to make sure they are positive
+    args = param.copy()
+    args[-n_pos:-1] = np.exp(args[-n_pos:-1])
+    exp_p = np.exp(args[-1])
+    args[-1] = exp_p/(1+exp_p)
+        
+    for i, arr in enumerate(seq_ps):
+        z_arr = []
+        for x in arr:
+            z, _ = DP_Z_cy(args, x, core_length)
+            z_arr.append(z)
+        z_ps[i] = np.max(z_arr)
+    
+    for i, arr in enumerate(seq_bg):
+        z_arr = []
+        for x in arr:
+            z, _ = DP_Z_cy(args, x, core_length)
+            z_arr.append(z)
+        z_bg[i] = np.max(z_arr)
+        
+    y_true = np.append(np.ones(len(ps)), np.zeros(len(bg)))
+    y_score = np.append(z_ps, z_bg)
+    
+    fpr_grd, tpr_grd, _ = roc_curve(y_true, y_score)
+    auc = roc_auc_score(y_true, y_score)
+    
+    return fpr_grd, tpr_grd, auc
+
+
 def auc_evaluate(param, plus, bg, core_length, kmer_inx):
     z_plus = np.zeros(len(plus))
     z_bg = np.zeros(len(bg))
@@ -26,7 +67,35 @@ def auc_evaluate(param, plus, bg, core_length, kmer_inx):
     
     return fpr_grd, tpr_grd, auc
 
+def evaluate_test_set(param, plus, bg, core_length, kmer_inx):
+    z_ps = np.zeros(len(plus))
+    z_bg = np.zeros(len(bg))
+    
+    seq_ps = [seq2int_cy('A' + x, core_length, kmer_inx) for x in plus]
+    seq_bg = [seq2int_cy('A' + x, core_length, kmer_inx) for x in bg]
+    
+    n_pos = 3
+    #exp parameters to make sure they are positive
+    args = param.copy()
+    args[-n_pos:-1] = np.exp(args[-n_pos:-1])
+    exp_p = np.exp(args[-1])
+    args[-1] = exp_p/(1+exp_p)
+        
+    for i, x in enumerate(seq_ps):
+        z_ps[i], _ = DP_Z_cy(args, x, core_length)
+    
+    for i, x in enumerate(seq_bg):
+        z_bg[i], _ = DP_Z_cy(args, x, core_length)
+        
+    y_true = np.append(np.ones(len(plus)), np.zeros(len(bg)))
+    y_score = np.append(z_ps, z_bg)
+    
+    fpr_grd, tpr_grd, _ = roc_curve(y_true, y_score)
+    auc = roc_auc_score(y_true, y_score)
+    ap = average_precision_score(y_true, y_score)
 
+    
+    return auc, ap
 
 def partition (list_in, n):
     new_list = list_in.copy()
@@ -232,8 +301,11 @@ def optimize_adam(plus, bg, plus_valid, bg_valid, core_length=3, var_thr=0.05,
                     variability_index = param_local_fluctuation(param_history)
                     if variability_index<var_thr or t>max_iterations:
                         if save_files:
-                            auct, aucv = plt_performance(plus, bg, plus_valid, bg_valid, param_history, core_length, kmer_inx)
-                            np.savetxt(fname='param/'+ file_name +'.txt', X=np.append(theta_0,[f_t, auct, aucv]))
+                            if len(plus_valid)>0:
+                                auct, aucv = plt_performance(plus, bg, plus_valid, bg_valid, param_history, core_length, kmer_inx)
+                                np.savetxt(fname='param/'+ file_name +'.txt', X=np.append(theta_0,[f_t, auct, aucv]))
+                            else:
+                                np.savetxt(fname='param/'+ file_name +'.txt', X=np.append(theta_0,[f_t]))
                         return theta_0, g_t               
                 
             #updates the parameters by moving a step towards gradients
@@ -257,3 +329,18 @@ def parse_seq(file_name):
     with open(file_name,'r') as f:
         seq = [line.rstrip() for line in f]
     return seq
+
+def parse_clip_and_split(file_name, length=40):
+    input_seq_iterator = SeqIO.parse(file_name, "fasta")
+    sequences = [str(record.seq) for record in input_seq_iterator]
+    sequences_split = [[s[i:i+length] for i in np.arange(0,len(s)-length+1,5)] for s in sequences]
+    
+    return [item.upper().replace('U','T') for sublist in sequences_split for item in sublist]
+
+def parse_clip(file_name):
+    input_seq_iterator = SeqIO.parse(file_name, "fasta")
+    sequences = [str(record.seq) for record in input_seq_iterator]    
+    return [s.upper().replace('U','T')[150:200] for s in sequences]
+
+def split_seqs(sequences, length=40):
+    return [[s[i:i+length] for i in np.arange(0,len(s)-length+1,5)] for s in sequences]
