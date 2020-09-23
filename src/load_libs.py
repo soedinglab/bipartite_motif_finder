@@ -11,7 +11,7 @@ import random
 import multiprocessing
 import multiprocessing as mp
 import ctypes
-from sklearn.metrics import roc_curve, roc_auc_score
+from sklearn.metrics import roc_curve, roc_auc_score, average_precision_score
 import argparse
 import sys
 sys.path.append('src')
