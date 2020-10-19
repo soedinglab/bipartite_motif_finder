@@ -67,6 +67,23 @@ def auc_evaluate(param, plus, bg, core_length, kmer_inx):
     
     return fpr_grd, tpr_grd, auc
 
+def predict(test_sequences, tetha, core_length, kmer_inx):
+    z = np.zeros(len(test_sequences))
+    
+    seq_int = [seq2int_cy('A' + x, core_length, kmer_inx) for x in test_sequences]
+    
+    n_pos = 3
+    #exp parameters to make sure they are positive
+    args = tetha.copy()
+    args[-n_pos:-1] = np.exp(args[-n_pos:-1])
+    exp_p = np.exp(args[-1])
+    args[-1] = exp_p/(1+exp_p)
+        
+    for i, x in enumerate(seq_int):
+        z[i], _ = DP_Z_cy(args, x, core_length)
+        
+    return z
+
 def evaluate_test_set(param, plus, bg, core_length, kmer_inx):
     z_ps = np.zeros(len(plus))
     z_bg = np.zeros(len(bg))
@@ -90,7 +107,6 @@ def evaluate_test_set(param, plus, bg, core_length, kmer_inx):
     y_true = np.append(np.ones(len(plus)), np.zeros(len(bg)))
     y_score = np.append(z_ps, z_bg)
     
-    fpr_grd, tpr_grd, _ = roc_curve(y_true, y_score)
     auc = roc_auc_score(y_true, y_score)
     ap = average_precision_score(y_true, y_score)
 
@@ -344,3 +360,10 @@ def parse_clip(file_name):
 
 def split_seqs(sequences, length=40):
     return [[s[i:i+length] for i in np.arange(0,len(s)-length+1,5)] for s in sequences]
+
+def read_params(files):
+    params = []
+    for f in files:
+        param = np.loadtxt(f)
+        params.append(param)      
+    return params
