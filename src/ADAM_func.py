@@ -245,8 +245,14 @@ def param_local_fluctuation(param_history):
 
 
 
-def optimize_adam(plus, bg, core_length=3, var_thr=0.05, 
-                  sequences_per_batch=100, max_iterations=1000, evaluate_after=None, save_files=True, file_name='bipartite'):
+def optimize_adam(plus, bg, core_length=3, 
+                  var_thr=0.05, 
+                  sequences_per_batch=100, 
+                  max_iterations=1000, 
+                  evaluate_after=None, 
+                  no_cores=4,
+                  save_files=True, 
+                  file_name='bipartite'):
 
     #number of minibatches: number of positives/numbers per batch
     n_batch = int(len(plus)/sequences_per_batch)
@@ -294,7 +300,7 @@ def optimize_adam(plus, bg, core_length=3, var_thr=0.05,
         #enumerate minibatches
         for i in range(n_batch):
             
-            nll_obj = nLL(pos_batches[i],bg_batches[i], core_length)
+            nll_obj = nLL(pos_batches[i],bg_batches[i], core_length, no_cores)
 
             t+=1
 

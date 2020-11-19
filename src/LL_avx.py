@@ -5,12 +5,13 @@ from dp_z import *
 
 
 class nLL:
-    def __init__(self, seqs_p, seqs_bg, core_length):
+    def __init__(self, seqs_p, seqs_bg, core_length, no_cores):
         
         self.N_p = len(seqs_p)
         self.N_bg = len(seqs_bg)
         
         self.core_length = core_length
+        self.no_cores = no_cores
         
         #calculate background probabilities:
 
@@ -71,9 +72,9 @@ class nLL:
         d_z_xbg = mp.Array(ctypes.c_double, (2*(4**self.core_length) + n_pos)*self.N_bg) 
         
         #parallelizing
-        with multiprocessing.Pool(initializer=init, initargs=(z_x,d_z_x), processes=8) as pool:
+        with multiprocessing.Pool(initializer=init, initargs=(z_x,d_z_x), processes=self.no_cores) as pool:
             pool.map(self.assign_z_p, [(i, args) for i in range(len(self.X_p))])
-        with multiprocessing.Pool(initializer=init, initargs=(z_xbg, d_z_xbg), processes=8)  as pool:
+        with multiprocessing.Pool(initializer=init, initargs=(z_xbg, d_z_xbg), processes=self.no_cores)  as pool:
             pool.map(self.assign_z_bg, [(i, args) for i in range(len(self.X_bg))])
         
         #= convert to np array ======

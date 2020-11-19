@@ -23,6 +23,7 @@ parser.add_argument('--output_prefix', action="store", type=str, default=None, h
 parser.add_argument('--var_thr', action="store", type=float, default=0.03, help='variability threshold to stop ADAM')
 parser.add_argument('--batch_size', action="store", type=int, default=512, help='batch size')
 parser.add_argument('--max_iterations', action="store", type=int, default=1000, help='max number of iterations before stopping ADAM')
+parser.add_argument('--no_cores', action="store", type=int, default=4, help='the numbers of processors to be used in parallel')
 
 
 args = parser.parse_args()
@@ -38,6 +39,7 @@ output_prefix = args.output_prefix
 var_thr = args.var_thr
 batch_size = args.batch_size
 max_iterations = args.max_iterations
+no_cores = args.no_cores
 
 #### REMINDER: TAKE CARE OF U VS T
 use_u = False
@@ -94,6 +96,7 @@ if not test:
                                 sequences_per_batch=seq_per_batch, 
                                 max_iterations=max_iterations, 
                                 evaluate_after=8,
+                                no_cores=no_cores,
                                 save_files=True,
                                 file_name=file_prefix
         )
