@@ -97,8 +97,8 @@ if not test:
 
 
         #### REMOVE
-        r = 1
-        p = 10
+        #r = 1
+        #p = 10
         ###########
 
         parameters = np.concatenate([x.ravel() for x in [Ea, Eb, np.array([sf, r, p])]])
