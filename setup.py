@@ -12,6 +12,7 @@ setup(
     author_email="ssohrab@mpibpc.mpg.de",
     packages=find_packages(),
     install_requires=['numpy', 'cython', 'scipy', 'pandas', 'biopython', 'sklearn','matplotlib', 'seaborn'],
+    python_requires='>3.6',
     ext_modules=cythonize([
         Extension('bmf_tool.utils.dp_z',
               sources=['bmf_tool/utils/dp_z.pyx'],
