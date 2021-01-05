@@ -9,4 +9,6 @@ dist/
 *.png
 *.fasta
 *.fastq
+*.predictions
 *.so
+bmf_tool/utils/dp_z.c

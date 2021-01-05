@@ -1,3 +1,4 @@
 include bmf_tool/utils/dp_z.pyx
 include bmf_tool/utils/*.h
 include bmf_tool/utils/*.c
+include LICENSE

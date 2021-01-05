@@ -8,6 +8,7 @@ from .utils import (
     read_params,
     generate_kmer_inx,
     predict,
+    file_validator
 )
 
 
@@ -30,7 +31,7 @@ def create_parser():
     parser.add_argument('--var_thr', action="store", type=float, default=0.03, help='variability threshold to stop ADAM')
     parser.add_argument('--batch_size', action="store", type=int, default=512, help='batch size')
     parser.add_argument('--max_iterations', action="store", type=int, default=1000, help='max number of iterations before stopping ADAM')
-    parser.add_argument('--no_cores', action="store", type=int, default=4, help='the numbers of processors to be used in parallel')
+    parser.add_argument('--no_cores', action="store", type=int, default=4, help='the numbers of CPU cores used')
     return parser
 
 def main():
@@ -70,6 +71,17 @@ def main():
         if output_prefix is None:
             output_prefix = 'bipartite'
 
+        #input file validator
+        try:
+            _ = file_validator(PSsequences_path, input_type, first_n=-1)
+            _ = file_validator(BGsequences_path, input_type, first_n=-1)
+        except ValueError as exc:
+            print(f'Error: {str(exc)}')
+            exit
+        except:
+            print(f'something went wrong! The input file did not pass validation check. Please make sure your file has the correct format.')
+            exit
+
         #parse sequences
         ps_sequences = parse_sequences(file_name=PSsequences_path, input_type=input_type, use_u=use_u)
         bg_sequences = parse_sequences(file_name=BGsequences_path, input_type=input_type, use_u=use_u)
@@ -84,6 +96,7 @@ def main():
 
         print('After shortlisting, number of enriched sequences: ', len(ps_sequences))
         print('After shortlisting, number of background sequences: ', len(bg_sequences))
+
 
         # ### ADAM optimization
         for i in range(0, no_tries):
@@ -132,6 +145,8 @@ def main():
     #  test mode                 #
     ##############################
     else:
+
+        print('BMF testing mode')
         #make sure the model parameters are specified
         if parameters_path is None:
             raise ValueError('Please specify model parameters for the test mode using --model_parameters')
@@ -144,6 +159,10 @@ def main():
 
         #split the path into directory and filename
         path_to_dir, param_file_names = os.path.split(parameters_path)
+
+        #if at current directory, cannot leave string empty
+        if path_to_dir == '':
+            path_to_dir = '.'
         
         # find all corresponding parameter files
         param_files = [s for s in os.listdir(path_to_dir) if s.startswith(f'{param_file_names}') & s.endswith('txt')]

@@ -21,49 +21,41 @@ class nLL:
         #calculate background probabilities:
 
         #include positive sequences in bg sequences if not there
-        X_bg_t = list(set(np.concatenate([seqs_p[:,0],seqs_bg[:,0]])))  #number of unique sequences
+        X_bg_t = list(set(seqs_p + seqs_bg))  #number of unique sequences
         
-        #dictionary with sequences as keys and their frequencies as values
-        no_sequences = len(X_bg_t)
-        p_bg = {k:v/no_sequences for k,v in Counter(X_bg_t).items()}
+        counts = np.zeros(len(X_bg_t))
+        for i, x in enumerate(X_bg_t):
+            counts[i] = seqs_bg.count(x)
+            
+        counts = counts + 1 #pseudocount to make sure 
+        counts = counts/np.sum(counts)
 
+        p_bg = dict(zip(X_bg_t, counts))
 
-        self.pbg_xp = np.array([p_bg[x] for x in seqs_p[:,0]])
-        self.pbg_xbg = np.array([p_bg[xbg] for xbg in seqs_bg[:,0]])
+        self.pbg_xp = np.array([p_bg[x] for x in seqs_p])
+        self.pbg_xbg = np.array([p_bg[xbg] for xbg in seqs_bg])
         
-        
-        #create sequence to integer dictionaries for the RNA sequence and structure
-        kmer_inx = generate_kmer_inx(core_length)
-        struct_inx = generate_struct_inx(core_length)
-        
-        #I add a padding nucleotide to the beginning to avoid -1 indexing, binding starts at
+        #add a padding nucleotide to the beginning to make the calculations stable, binding starts at
         #position i=l so the padded nucleotide has no effect.
-        self.X_p  = [seq2int_cy('A' + x , core_length, kmer_inx) for x in seqs_p[:,0]] 
-        self.X_bg = [seq2int_cy('A' + x , core_length, kmer_inx) for x in seqs_bg[:,0]]
-        self.S_p  = [seq2int_cy('.' + x , core_length, struct_inx) for x in seqs_p[:,1]] 
-        self.S_bg = [seq2int_cy('.' + x , core_length, struct_inx) for x in seqs_bg[:,1]]
+        kmer_inx = generate_kmer_inx(core_length)
+        self.X_p = [seq2int_cy('A' + x , core_length, kmer_inx) for x in seqs_p] 
+        self.X_bg = [seq2int_cy('A' + x , core_length, kmer_inx) for x in seqs_bg]
 
 
         
     def assign_z_p(self, tup):
             i, args = tup
             d_z_x_np = np.frombuffer(dz.get_obj(), dtype=np.float64).reshape(-1, self.N_p)
-            z[i], d_z_x_np[:,i] = DP_Z_cy(args, self.X_p[i], self.S_p[i], self.core_length)
+            z[i], d_z_x_np[:,i] = DP_Z_cy(args, self.X_p[i], self.core_length)
                 
             
     def assign_z_bg(self, tup):
             i, args = tup
             d_z_xbg_np = np.frombuffer(dz.get_obj(), dtype=np.float64).reshape(-1, self.N_bg)
-            z[i], d_z_xbg_np[:,i] = DP_Z_cy(args, self.X_bg[i], self.S_bg[i], self.core_length)
+            z[i], d_z_xbg_np[:,i] = DP_Z_cy(args, self.X_bg[i], self.core_length)
 
 
     def __call__(self, parameters):
-        
-        #number of processes
-        n_processes = 4
-        
-        #number of model parameters
-        n_param = parameters.shape[0]
         
         #number of positive variables (stacked at the end)
         n_pos = 3
@@ -72,16 +64,15 @@ class nLL:
         args = parameters.copy()
         args[-n_pos:-1] = np.exp(args[-n_pos:-1])
         exp_p = np.exp(-args[-1])
-        
-        #the last parameter is p and should stay between 0 and 1
         args[-1] = 1/(1+exp_p)
+    
     
         #define weights and derivatives as a multiprocessing array
         z_x = mp.Array(ctypes.c_double, self.N_p)
-        d_z_x = mp.Array(ctypes.c_double, n_param*self.N_p)
+        d_z_x = mp.Array(ctypes.c_double, (2*(4**self.core_length) + n_pos)*self.N_p)
 
         z_xbg = mp.Array(ctypes.c_double, self.N_bg)
-        d_z_xbg = mp.Array(ctypes.c_double, n_param*self.N_bg) 
+        d_z_xbg = mp.Array(ctypes.c_double, (2*(4**self.core_length) + n_pos)*self.N_bg) 
         
         #parallelizing
         with mp.Pool(initializer=init, initargs=(z_x,d_z_x), processes=self.no_cores) as pool:
