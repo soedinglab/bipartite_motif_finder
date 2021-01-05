@@ -10,3 +10,4 @@ dist/
 *.fasta
 *.fastq
 *.so
+bmf_tool/utils/dp_z.c
