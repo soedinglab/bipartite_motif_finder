@@ -14,45 +14,42 @@ parser = argparse.ArgumentParser()
 parser.add_argument('factor_number', type=int)
 parser.add_argument('--motif_length', action="store", type=int, default=3)
 parser.add_argument('--no_tries', action="store", type=int, default=5)
+parser.add_argument('--all_sequences', default=False, action='store_true')
 
 args = parser.parse_args()
 
 factor_number = args.factor_number
 core_length = args.motif_length
 no_tries = args.no_tries
+all_sequences = args.all_sequences
+
+if all_sequences:
+    print('building a bipartite model on all sequences')
+else:
+    print('building a bipartite model on training set')
 
 
 #parse the dataset to find the corresponding files for each factor
-selex_files = np.loadtxt('selex_files.txt', dtype=str) #name of all files
+fasta_dir = '/cbscratch/salma/selex_taipale/data_fasta/'
+file_table = pd.read_csv('/cbscratch/salma/selex_taipale/ps_and_bg_file_table.txt', sep='\t', header=None) #name of all files
+factor = file_table.iloc[factor_number,0]
 
-#first part of file_name is the protein name
-factors = np.unique([s.split('_')[0] for s in selex_files]) 
-
-#select the factor based on the input
-factor = factors[factor_number]
-
-#files that correspond to this factor
-factor_files = selex_files[np.array([factor in s for s in selex_files])]
-cycles = np.array([int(s.split('_')[-2]) for s in factor_files])
-#note that the first replicate will be chosen in case of multiple choices
-last_cycle_file = factor_files[np.argmax(cycles)]
-last_cycle_code = last_cycle_file.split('_')[1]
-corresponding_bg_file = selex_files[np.array([(last_cycle_code in s)&('ZeroCycle' in s) for s in selex_files])][0]
+if all_sequences:
+    bg_file = os.path.join(fasta_dir, file_table.iloc[factor_number,1])
+    ps_file = os.path.join(fasta_dir, file_table.iloc[factor_number,2])
+else:
+    bg_file = f'/cbscratch/salma/selex_taipale/data_split/{factor}_train_bg.fasta'
+    ps_file = f'/cbscratch/salma/selex_taipale/data_split/{factor}_train_ps.fasta'
 
 
-bg = os.path.join('../rbp_scratch/data', corresponding_bg_file)
-pos = os.path.join('../rbp_scratch/data', last_cycle_file)
-    
-background_set = parse_fastq(bg)
+
+
+
+background_set = parse_fasta(bg_file)
 background_set   = [seq.replace('N', random.sample(['A','T','C','G'],1)[0]) for seq in background_set]
 
-positive_set = parse_fastq(pos)
+positive_set = parse_fasta(ps_file)
 positive_set = [seq.replace('N', random.sample(['A','T','C','G'],1)[0]) for seq in positive_set]
-
-bg_train, bg_test, bg_valid = partition(background_set, 3)
-pos_train, pos_test, pos_valid = partition(positive_set, 3)
-
-
 
 # ### ADAM optimization
 for i in range(0, no_tries):
@@ -71,16 +68,21 @@ for i in range(0, no_tries):
     
     seq_per_batch = 500
     
-    file_name = f'selex/{factor}_4vs0_{i}_cs{core_length}'
+    if all_sequences:
+        file_name = f'selex/benchmark_selex_cs{core_length}/{factor}_cs{core_length}_{i}'
+    else:
+        file_name = f'selex/benchmark_selex_train_cs{core_length}/{factor}_cs{core_length}_{i}'
 
     maxiter=1000
     x_opt = optimize_adam(
-                            pos_train, bg_train, pos_valid, bg_valid, 
+                            positive_set, background_set, 
+                            [], [], 
                             core_length=core_length,
                             var_thr=var_thr,
                             sequences_per_batch=seq_per_batch, 
                             max_iterations=maxiter, 
-                            evaluate_after=4000
+                            evaluate_after=4000,
+                            save_files=True
     )
 
 

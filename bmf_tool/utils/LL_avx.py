@@ -1,16 +1,22 @@
-# ### cython
-from dp_z import *
+import ctypes
+import multiprocessing as mp
+
+import numpy as np
+from scipy.special import logsumexp
+
+from .dp_z import seq2int_cy, generate_kmer_inx, DP_Z_cy
 
 # ### implementation of the LL object
 
 
 class nLL:
-    def __init__(self, seqs_p, seqs_bg, core_length):
+    def __init__(self, seqs_p, seqs_bg, core_length, no_cores):
         
         self.N_p = len(seqs_p)
         self.N_bg = len(seqs_bg)
         
         self.core_length = core_length
+        self.no_cores = no_cores
         
         #calculate background probabilities:
 
@@ -50,9 +56,7 @@ class nLL:
             d_z_xbg_np = np.frombuffer(dz.get_obj(), dtype=np.float64).reshape(-1, self.N_bg)
             z[i], d_z_xbg_np[:,i] = DP_Z_cy(args, self.X_bg[i], self.S_bg[i], self.core_length)
 
-          
 
-        
     def __call__(self, parameters):
         
         #number of processes
@@ -80,9 +84,9 @@ class nLL:
         d_z_xbg = mp.Array(ctypes.c_double, n_param*self.N_bg) 
         
         #parallelizing
-        with multiprocessing.Pool(initializer=init, initargs=(z_x,d_z_x), processes=n_processes) as pool:
+        with mp.Pool(initializer=init, initargs=(z_x,d_z_x), processes=self.no_cores) as pool:
             pool.map(self.assign_z_p, [(i, args) for i in range(len(self.X_p))])
-        with multiprocessing.Pool(initializer=init, initargs=(z_xbg, d_z_xbg), processes=n_processes)  as pool:
+        with mp.Pool(initializer=init, initargs=(z_xbg, d_z_xbg), processes=self.no_cores)  as pool:
             pool.map(self.assign_z_bg, [(i, args) for i in range(len(self.X_bg))])
         
         #= convert to np array ======
