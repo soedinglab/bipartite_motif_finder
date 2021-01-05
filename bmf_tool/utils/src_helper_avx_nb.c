@@ -1,5 +1,5 @@
 #include "src_helper_avx_nb.h"
-#include "../lib/simd.h"
+#include "simd.h"
 #include <stdio.h>
 #include <stdlib.h>
 

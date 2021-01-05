@@ -1,0 +1,11 @@
+__pycache__
+*.egg-info/
+.ipynb*
+.DS_Store
+build/
+dist/
+*.pdf
+*.txt
+*.png
+*.fasta
+*.fastq

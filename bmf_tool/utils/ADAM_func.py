@@ -1,3 +1,16 @@
+import numpy as np
+import random
+import pandas as pd
+from sklearn.metrics import roc_curve, roc_auc_score, average_precision_score
+from matplotlib import pyplot as plt
+from Bio import SeqIO
+
+from .dp_z import seq2int_cy, generate_kmer_inx, DP_Z_cy
+from .LL_avx import nLL
+
+
+
+
 def auc_evaluate_arbitrary_length(param, ps_valid, bg_valid, core_length, kmer_inx, length=40):
     
     ps = split_seqs(ps_valid, length)
@@ -67,14 +80,14 @@ def auc_evaluate(param, plus, bg, core_length, kmer_inx):
     
     return fpr_grd, tpr_grd, auc
 
-def predict(test_sequences, tetha, core_length, kmer_inx):
+def predict(test_sequences, theta, core_length, kmer_inx):
     z = np.zeros(len(test_sequences))
     
     seq_int = [seq2int_cy('A' + x, core_length, kmer_inx) for x in test_sequences]
     
     n_pos = 3
     #exp parameters to make sure they are positive
-    args = tetha.copy()
+    args = theta.copy()
     args[-n_pos:-1] = np.exp(args[-n_pos:-1])
     exp_p = np.exp(args[-1])
     args[-1] = exp_p/(1+exp_p)
@@ -119,7 +132,7 @@ def partition (list_in, n):
     return [new_list[i::n] for i in range(n)]
 
 
-def plt_performance(plus, bg, param_history, core_length, kmer_inx, file_name, evaluate_after):
+def plt_performance(plus, bg, param_history, core_length, kmer_inx, file_name, evaluate_after, final_plot=True, ll_hist=None):
     
     inx_kmer = dict((v,k) for k,v in kmer_inx.items())
         
@@ -152,20 +165,26 @@ def plt_performance(plus, bg, param_history, core_length, kmer_inx, file_name, e
     f'{core1.index[2]}({core1.values[2]:.2f}) ----------------- {core2.index[2]}({core2.values[2]:.2f})\n' +
     f'variation index: {param_local_fluctuation(param_history):.2f}', horizontalalignment='left', fontsize=12, x=0.1, y=1.2)
         
-    # AUC plots ================================
+    if final_plot:
+        # AUC plots ================================
+        fpr_t, tpr_t, auct = auc_evaluate(theta, plus, bg, core_length, kmer_inx)
+            
+        ax1.plot([0, 1], [0, 1], 'k--')
+        ax1.plot(fpr_t, tpr_t, label=f'training (AUC={auct:.2f})')
+        ax1.set_xlabel('False positive rate')
+        ax1.set_ylabel('True positive rate')
+        ax1.set_title('ROC curve')
+        ax1.legend(loc='best')
     
-    fpr_t, tpr_t, auct = auc_evaluate(theta, plus, bg, core_length, kmer_inx)
-        
-    ax1.plot([0, 1], [0, 1], 'k--')
-    ax1.plot(fpr_t, tpr_t, label=f'training (AUC={auct:.2f})')
-    ax1.set_xlabel('False positive rate')
-    ax1.set_ylabel('True positive rate')
-    ax1.set_title('ROC curve')
-    ax1.legend(loc='best')
+    else:
+        # LL history plots =========================
+        ax1.plot(xx, ll_hist) 
+        ax1.set_xlabel('iteration')
+        ax1.set_ylabel('log-likelihood')
+
+
 
     # Plot binding energies of best bound k-mer per core ====
-    
-    
     for i in range(len(kmer_inx)):
         core1_hist = [arr[i] for arr in param_history]
         core2_hist = [arr[i + len(kmer_inx)] for arr in param_history]
@@ -194,28 +213,29 @@ def plt_performance(plus, bg, param_history, core_length, kmer_inx, file_name, e
         ax2.plot(xx, core1_hist, color='#097d87', label='core1 %s E'%kmer1, ls='--')
         ax2.plot(xx, core2_hist, color='#873f0b', label='core2 %s E'%kmer2, ls='--')
     
-    ax2.set_xlabel('n\'th iteration')
-    ax2.legend()
+    ax2.set_xlabel('iteration')
+    ax2.legend(loc='upper right')
         
     # plot r, p, and SF ========================
     
-    sf_hist = [np.exp(arr[-3]) for arr in param_history]
     r_hist = [np.exp(arr[-2]) for arr in param_history]
     p_hist = [1/(1+np.exp(-arr[-1])) for arr in param_history]
     
     mean_hist = [((1-p)*r)/(p) for r,p in zip(r_hist, p_hist)]
     mode_hist = [max(0,int(((1-p)*(r-1))/p)) for r,p in zip(r_hist, p_hist)]
 
-    ax3.set_xlabel('n\'th iteration')
-    ax3.plot(xx, mean_hist, color='#092e87', label='mean of NB distribution')  
-    ax3.plot(xx, mode_hist, color='#870b1b', label='mode of NB distribution')
+    ax3.set_xlabel('iteration')
+    ax3.plot(xx, mean_hist, color='#092e87', label='distance mean')  
+    ax3.plot(xx, mode_hist, color='#870b1b', label='distance mode')
     
     ax3.legend() 
     
     #================================================
     
     plt.savefig(f'{file_name}.pdf', bbox_inches='tight')
-    return auct
+    plt.savefig(f'{file_name}.png', bbox_inches='tight', dpi=150)
+
+    plt.close()
     
 
 
@@ -245,7 +265,9 @@ def param_local_fluctuation(param_history):
 
 
 
-def optimize_adam(plus, bg, core_length=3, 
+def optimize_adam(plus, bg, 
+                  parameters,
+                  core_length=3, 
                   var_thr=0.05, 
                   sequences_per_batch=100, 
                   max_iterations=1000, 
@@ -276,11 +298,8 @@ def optimize_adam(plus, bg, core_length=3,
     
     min_iter = 20 #minimum rounds of parameter recording before checking for convergence
 
-    #auc array tracks auc values
-    param_history = []    
-    
-    #calculate the stretch of reduced performance
-    reduction = 0
+    param_history = []
+    ll_history = []
     
     #if none assign an epoch evaluation scheme
     if evaluate_after is None:
@@ -304,8 +323,6 @@ def optimize_adam(plus, bg, core_length=3,
 
             t+=1
 
-            f_prev = f_t
-
             #computes the gradient of the stochastic function
             f_t, g_t = nll_obj(theta_0) 
 
@@ -327,6 +344,10 @@ def optimize_adam(plus, bg, core_length=3,
             if t%evaluate_after == 0:                
                 #track parameter evolution
                 param_history.append(theta_0)
+                ll_history.append(-f_t)
+
+                if t%(evaluate_after*4) == 0:
+                    plt_performance(plus, bg, param_history, core_length, kmer_inx, file_name, evaluate_after, final_plot=False, ll_hist=ll_history)
                 
                 #minimum iterations before checking for convergence: min_iter                
                 if len(param_history)>min_iter:
@@ -335,89 +356,16 @@ def optimize_adam(plus, bg, core_length=3,
                     #OR stop when it took too long ($max_iterations)
                     
                     variability_index = param_local_fluctuation(param_history)
-                    print('variability_index', variability_index)
+                    print(f'Variability index at iteration {t}: {variability_index:.3f}')
                     if variability_index<var_thr or t>max_iterations:
                         if save_files:
-                            _ = plt_performance(plus, bg, param_history, core_length, kmer_inx, file_name, evaluate_after)
+                            plt_performance(plus, bg, param_history, core_length, kmer_inx, file_name, evaluate_after)
                             np.savetxt(fname=file_name +'.txt', X=np.append(theta_0,[f_t]))
                         return theta_0, g_t               
                 
             #updates the parameters by moving a step towards gradients
-            theta_0_prev = theta_0 
             theta_0 = theta_0 - (alpha*m_cap)/(np.sqrt(v_cap)+epsilon)     
             
-            
-
-
-# ### Import fasta files
-
-def parse_fastq(file_name):
-    input_seq_iterator = SeqIO.parse(file_name, "fastq")
-    return [str(record.seq) for record in input_seq_iterator]
-
-def parse_fasta(file_name):
-    input_seq_iterator = SeqIO.parse(file_name, "fasta")
-    return [str(record.seq) for record in input_seq_iterator]
-
-def parse_seq(file_name):
-    with open(file_name,'r') as f:
-        seq = [line.rstrip() for line in f]
-    return seq
-
-def parse_sequences(file_name, input_type, use_u=False):
-
-    # calling the right parser according to datatype
-    if input_type == 'fastq':
-        sequences = parse_fastq(file_name)
-    elif input_type == 'fasta':
-        sequences = parse_fasta(file_name)
-    elif input_type == 'seq':
-        sequences = parse_seq(file_name)
-    else:
-        raise ValueError('input_type is not valid')
-
-    #base2 depends on if U or T is used
-    if use_u:
-        base2 = 'U'
-    else:
-        base2 = 'T'
-    
-    #replace N with random nucleotides
-    sequences = [seq.replace('N', random.sample(['A',base2,'C','G'],1)[0]) for seq in sequences]
-    return sequences
-
-    
-
-def parse_clip_and_split(file_name, length=40):
-    input_seq_iterator = SeqIO.parse(file_name, "fasta")
-    sequences = [str(record.seq) for record in input_seq_iterator]
-    sequences_split = [[s[i:i+length] for i in np.arange(0,len(s)-length+1,5)] for s in sequences]
-    
-    return [item.upper().replace('U','T') for sublist in sequences_split for item in sublist]
-
-def find_start_index_clip(seq):
-    for i , c in enumerate(seq):
-        if c.isupper():
-            return i
-    return 0
-
-def parse_clip(file_name):
-    input_seq_iterator = SeqIO.parse(file_name, "fasta")
-    sequences = [str(record.seq) for record in input_seq_iterator]  
-    
-    clipped_sequences = []
-    for seq in sequences:
-        start_inx = find_start_index_clip(seq)
-        if start_inx + 60 < len(seq):
-            end_inx = start_inx + 60
-        else:
-            end_inx = len(seq)
-            start_inx = end_inx - 60  
-        clipped_sequences.append(seq[start_inx:end_inx].upper().replace('U','T'))
-    return clipped_sequences
-
-def split_seqs(sequences, length=40):
-    return [[s[i:i+length] for i in np.arange(0,len(s)-length+1,5)] for s in sequences]
 
 def read_params(files):
     params = []
