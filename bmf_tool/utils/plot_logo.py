@@ -205,6 +205,8 @@ def main():
     else:
         print('The motif does not seem to be bipartite! To be sure, you can run BMF with a bigger motif-length.')
 
+    print(f'You can find the BMF logo plot generated at: {parameter_prefix}_seqLogo.pdf')
+
 
 
 if __name__ == '__main__':

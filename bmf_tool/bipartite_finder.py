@@ -22,13 +22,13 @@ def create_parser():
     parser.add_argument('sequences', type=str, help='Train mode: positive sequences enriched with the motif. Test mode: all sequences to be tested')
     group = parser.add_mutually_exclusive_group()
     group.add_argument('--BGsequences', type=str, default=None, help='background sequences (only relevant for training).')
-    group.add_argument('--test', action="store_true", default=False, help='use this flag to run the testing mode.')
+    group.add_argument('--predict', action="store_true", default=False, help='use this flag to run the prediction mode.')
     parser.add_argument('--input_type', action="store", default='fasta', choices=['fasta','fastq','seq'], help='format of input sequences. Can be "fasta", "fastq", and "seq"')
     parser.add_argument('--model_parameters', action="store", type=str, default=None, help='path to .param file that specifies model parameters.')
     parser.add_argument('--motif_length', action="store", type=int, default=3, help='the length of each core in the bipartite motif')
     parser.add_argument('--no_tries', action="store", type=int, default=5, help='the number of times the program is run with random initializations\nNote: only relevant for training')
     parser.add_argument('--output_prefix', action="store", type=str, default=None, help='output file prefix. \nYou can specify a directory e.g. "--output_prefix output_dir/my_prefix"')
-    parser.add_argument('--var_thr', action="store", type=float, default=0.03, help='variability threshold to stop ADAM')
+    parser.add_argument('--var_thr', action="store", type=float, default=0.03, help='variability threshold condition to stop ADAM')
     parser.add_argument('--batch_size', action="store", type=int, default=512, help='batch size')
     parser.add_argument('--max_iterations', action="store", type=int, default=1000, help='max number of iterations before stopping ADAM')
     parser.add_argument('--no_cores', action="store", type=int, default=4, help='the numbers of CPU cores used')
@@ -104,12 +104,14 @@ def main():
             file_prefix = f'{output_prefix}_cs{core_length}_{i}'
 
             if os.path.isfile(file_prefix+'.txt'):
-                print(f'file {file_prefix} already exists. Skipping...',)
+                print(f'file {file_prefix}.txt already exists. Skipping...',)
+                print(f'You can remove {file_prefix}.txt if you wanna run BMF again.')
                 continue 
             
             #initialize with a seed, makes results reproducible
             np.random.seed(i)
-            print(f'\nADAM optimization round {i}')
+            print(f'\nADAM optimization round {i+1}')
+            print(f'\nMaximum iteration set to {max_iterations}')
             #random initialization of parameters
             Ea = np.random.normal(loc=12.0, scale=1.0, size=4**core_length)
             Eb = np.random.normal(loc=12.0, scale=1.0, size=4**core_length)
@@ -127,7 +129,7 @@ def main():
             
             seq_per_batch = batch_size
 
-            x_opt = optimize_adam(
+            _ = optimize_adam(
                 ps_sequences, bg_sequences,
                 parameters=parameters, 
                 core_length=core_length,
@@ -140,13 +142,15 @@ def main():
                 file_name=file_prefix
             )
 
+            print(f'BMF parameters were saved to {output_prefix}_cs{core_length}_{i}.txt\n')
+
 
     ##############################
     #  test mode                 #
     ##############################
     else:
 
-        print('BMF testing mode')
+        print('BMF prediction mode')
         #make sure the model parameters are specified
         if parameters_path is None:
             raise ValueError('Please specify model parameters for the test mode using --model_parameters')
@@ -174,11 +178,18 @@ def main():
         n_log_likelihoods = [param[-3] for param in params]
         tetha = params[np.argmin(n_log_likelihoods)][:-1]
 
+        #check if motif length matches param file
+        expected_param_no = 2*(4**core_length)+3
+        if tetha.shape[0] != expected_param_no:
+            print(f'Error: The specifies motif_length does not match the number of parameters')
+            exit
+
         #calculate auroc and ap scores
         kmer_inx = generate_kmer_inx(core_length)
         y_scores = predict(sequences, tetha, core_length, kmer_inx)
 
         np.savetxt(fname=f'{output_prefix}.predictions', X=y_scores)
+        print(f'Prediction scores saved to {output_prefix}.predictions')
 
 
 if __name__ == '__main__':
