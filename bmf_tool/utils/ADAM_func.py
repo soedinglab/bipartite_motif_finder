@@ -8,53 +8,13 @@ from Bio import SeqIO
 from .dp_z import seq2int_cy, generate_kmer_inx, DP_Z_cy
 from .LL_avx import nLL
 
-
-
-
-def auc_evaluate_arbitrary_length(param, ps_valid, bg_valid, core_length, kmer_inx, length=40):
-    
-    ps = split_seqs(ps_valid, length)
-    bg = split_seqs(bg_valid, length)
-    
-    z_ps = np.zeros(len(ps))
-    z_bg = np.zeros(len(bg))
-    
-    seq_ps = [[seq2int_cy('A' + x, core_length, kmer_inx) for x in arr] for arr in ps]
-    seq_bg = [[seq2int_cy('A' + x, core_length, kmer_inx) for x in arr] for arr in bg]
-    
-    n_pos = 3
-    #exp parameters to make sure they are positive
-    args = param.copy()
-    args[-n_pos:-1] = np.exp(args[-n_pos:-1])
-    exp_p = np.exp(args[-1])
-    args[-1] = exp_p/(1+exp_p)
-        
-    for i, arr in enumerate(seq_ps):
-        z_arr = []
-        for x in arr:
-            z, _ = DP_Z_cy(args, x, core_length)
-            z_arr.append(z)
-        z_ps[i] = np.max(z_arr)
-    
-    for i, arr in enumerate(seq_bg):
-        z_arr = []
-        for x in arr:
-            z, _ = DP_Z_cy(args, x, core_length)
-            z_arr.append(z)
-        z_bg[i] = np.max(z_arr)
-        
-    y_true = np.append(np.ones(len(ps)), np.zeros(len(bg)))
-    y_score = np.append(z_ps, z_bg)
-    
-    fpr_grd, tpr_grd, _ = roc_curve(y_true, y_score)
-    auc = roc_auc_score(y_true, y_score)
-    
-    return fpr_grd, tpr_grd, auc
-
+np_float_t = np.float32
+#np_float_t = np.float64
 
 def auc_evaluate(param, plus, bg, core_length, kmer_inx):
-    z_plus = np.zeros(len(plus))
-    z_bg = np.zeros(len(bg))
+
+    z_plus = np.zeros(len(plus), dtype=np_float_t)
+    z_bg = np.zeros(len(bg), dtype=np_float_t)
     
     seq_pos = [seq2int_cy('A' + x, core_length, kmer_inx) for x in plus]
     seq_bg = [seq2int_cy('A' + x, core_length, kmer_inx) for x in bg]
@@ -81,7 +41,8 @@ def auc_evaluate(param, plus, bg, core_length, kmer_inx):
     return fpr_grd, tpr_grd, auc
 
 def predict(test_sequences, theta, core_length, kmer_inx):
-    z = np.zeros(len(test_sequences))
+
+    z = np.zeros(len(test_sequences), dtype=np_float_t)
     
     seq_int = [seq2int_cy('A' + x, core_length, kmer_inx) for x in test_sequences]
     
@@ -98,8 +59,8 @@ def predict(test_sequences, theta, core_length, kmer_inx):
     return z
 
 def evaluate_test_set(param, plus, bg, core_length, kmer_inx):
-    z_ps = np.zeros(len(plus))
-    z_bg = np.zeros(len(bg))
+    z_ps = np.zeros(len(plus), dtype=np_float_t)
+    z_bg = np.zeros(len(bg), dtype=np_float_t)
     
     seq_ps = [seq2int_cy('A' + x, core_length, kmer_inx) for x in plus]
     seq_bg = [seq2int_cy('A' + x, core_length, kmer_inx) for x in bg]
@@ -289,8 +250,8 @@ def optimize_adam(plus, bg,
     theta_0 = parameters  
     n_param = len(parameters)
 
-    m_t = np.zeros(n_param) 
-    v_t = np.zeros(n_param)  
+    m_t = np.zeros(n_param, dtype=np_float_t) 
+    v_t = np.zeros(n_param, dtype=np_float_t)  
 
     t = 0  #iterations
     f_t = 42 #initialize with random number

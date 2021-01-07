@@ -4,7 +4,8 @@
 #include <math.h>
 #include <assert.h>
 
-typedef double c_float_t;
+//typedef float c_float_t;
+typedef float c_float_t;
 
 typedef struct DerParams {
 
@@ -18,36 +19,36 @@ typedef struct DerParams {
 } DerParams;
 
 static void initialize_array(c_float_t* arr, c_float_t value, int length);
-double sum_array_c(double* arr, int length);
-void sum_mat_rows(double* out, double* mat, int n_row, int n_col);
+c_float_t sum_array_c(c_float_t* arr, int length);
+void sum_mat_rows(c_float_t* out, c_float_t* mat, int n_row, int n_col);
 
 void initialize_DerParams(DerParams* params, int L, int no_kmers); 
 void deinitialize_DerParams(DerParams* params);
 
-void assign_za_c(int i, double* za, double* zb, double concentration_times_energy, int l);
-void assign_zb_c(long* x, int i, double* za, double* zb, double* Eb, double cab, double sf, double r, double p, int l);
+void assign_za_c(int i, c_float_t* za, c_float_t* zb, c_float_t concentration_times_energy, int l);
+void assign_zb_c(long* x, int i, c_float_t* za, c_float_t* zb, c_float_t* Eb, c_float_t cab, c_float_t sf, c_float_t r, c_float_t p, int l);
 
-void assign_za_E_derivatives_c(long* x, int i, double* za, double* zb, int L, int l, int no_kmers,
-                                 DerParams* params, double* Ea, double* Eb, double cab);
+void assign_za_E_derivatives_c(long* x, int i, c_float_t* za, c_float_t* zb, int L, int l, int no_kmers,
+                                 DerParams* params, c_float_t* Ea, c_float_t* Eb, c_float_t cab);
                                  
-void assign_zb_E_derivatives_c(long* x, int i, double* za, double* zb, int L, int l, int no_kmers,
-                                 DerParams* params, double* Ea, double* Eb, double cab, double sf, double r, double p);
+void assign_zb_E_derivatives_c(long* x, int i, c_float_t* za, c_float_t* zb, int L, int l, int no_kmers,
+                                 DerParams* params, c_float_t* Ea, c_float_t* Eb, c_float_t cab, c_float_t sf, c_float_t r, c_float_t p);
 
-void assign_za_r_derivative_c(int i, double* za_r_derivatives, double* zb_r_derivatives, double concentration_times_energy, int l);
-void assign_za_p_derivative_c(int i, double* za_p_derivatives, double* zb_p_derivatives, double concentration_times_energy, int l);
-void assign_za_sf_derivative_c(int i, double* za_sf_derivatives, double* zb_sf_derivatives, double concentration_times_energy, int l);
+void assign_za_r_derivative_c(int i, c_float_t* za_r_derivatives, c_float_t* zb_r_derivatives, c_float_t concentration_times_energy, int l);
+void assign_za_p_derivative_c(int i, c_float_t* za_p_derivatives, c_float_t* zb_p_derivatives, c_float_t concentration_times_energy, int l);
+void assign_za_sf_derivative_c(int i, c_float_t* za_sf_derivatives, c_float_t* zb_sf_derivatives, c_float_t concentration_times_energy, int l);
 
-void assign_zb_r_derivative_c(int i, double* za, double* za_r_derivatives, double* zb_r_derivatives, double energy_b, 
-                                     double cab, double sf,double r, double p, int l);
-void assign_zb_p_derivative_c(int i, double* za, double* za_p_derivatives, double* zb_p_derivatives, double energy_b, 
-                                     double cab, double sf, double r, double p, int l);
-void assign_zb_sf_derivative_c(int i, double* za, double* za_sf_derivatives, double* zb_sf_derivatives, double energy_b, 
-                                     double cab, double sf, double r, double p, int l);
+void assign_zb_r_derivative_c(int i, c_float_t* za, c_float_t* za_r_derivatives, c_float_t* zb_r_derivatives, c_float_t energy_b, 
+                                     c_float_t cab, c_float_t sf,c_float_t r, c_float_t p, int l);
+void assign_zb_p_derivative_c(int i, c_float_t* za, c_float_t* za_p_derivatives, c_float_t* zb_p_derivatives, c_float_t energy_b, 
+                                     c_float_t cab, c_float_t sf, c_float_t r, c_float_t p, int l);
+void assign_zb_sf_derivative_c(int i, c_float_t* za, c_float_t* za_sf_derivatives, c_float_t* zb_sf_derivatives, c_float_t energy_b, 
+                                     c_float_t cab, c_float_t sf, c_float_t r, c_float_t p, int l);
 
-double cb_c(int, double, double, double);
-double cb_r_derivative_c(int, double, double, double);
-double cb_p_derivative_c(int, double, double, double);
-double cb_sf_derivative_c(int, double, double, double);
-double digamma(double);
+c_float_t cb_c(int, c_float_t, c_float_t, c_float_t);
+c_float_t cb_r_derivative_c(int, c_float_t, c_float_t, c_float_t);
+c_float_t cb_p_derivative_c(int, c_float_t, c_float_t, c_float_t);
+c_float_t cb_sf_derivative_c(int, c_float_t, c_float_t, c_float_t);
+c_float_t digamma(c_float_t);
 
 #endif

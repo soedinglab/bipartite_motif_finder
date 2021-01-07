@@ -1,14 +1,25 @@
 cimport cython
 cimport numpy as np
-ctypedef double c_float_t
+
 import numpy as np
 import itertools
 from libc.math cimport exp,pow
 
-float_dtype = np.NPY_DOUBLE
+
+USE_DOUBLE=False
+
+ctypedef float c_float_t  # change double -> float if USE_DOUBLE is set to False
+
+if USE_DOUBLE:
+    float_dtype = np.NPY_DOUBLE
+    np_float_t = np.float64
+else:
+    float_dtype = np.NPY_FLOAT32
+    np_float_t = np.float32
+
 np.import_array()
 
-cdef double cpi = np.pi
+cdef c_float_t cpi = np.pi
 
 cpdef generate_kmer_inx(int l):
     cdef dict vals = {'A':0,'C':1,'G':2,'T':3}
@@ -50,34 +61,34 @@ cdef extern from "src_helper_avx_nb.h":
     void initialize_DerParams(DerParams* params, int L, int no_kmers)
     void deinitialize_DerParams(DerParams* params)
 
-    double sum_array_c(double* arr, int length)
-    void sum_mat_rows(double* out, double* mat, int n_row, int n_col)
+    c_float_t sum_array_c(c_float_t* arr, int length)
+    void sum_mat_rows(c_float_t* out, c_float_t* mat, int n_row, int n_col)
     
-    void assign_za_c(int i, double* za, double* zb, double concentration_times_energy, int l)
-    void assign_zb_c(long* x, int i, double* za, double* zb, double* Eb, double cab, double sf, double r, double p, int l)
+    void assign_za_c(int i, c_float_t* za, c_float_t* zb, c_float_t concentration_times_energy, int l)
+    void assign_zb_c(long* x, int i, c_float_t* za, c_float_t* zb, c_float_t* Eb, c_float_t cab, c_float_t sf, c_float_t r, c_float_t p, int l)
 
-    void assign_za_E_derivatives_c(long* x, int i, double* za, double* zb, int L, int l, int no_kmers,
-                                     DerParams* params, double* Ea, double* Eb, double cab)
+    void assign_za_E_derivatives_c(long* x, int i, c_float_t* za, c_float_t* zb, int L, int l, int no_kmers,
+                                     DerParams* params, c_float_t* Ea, c_float_t* Eb, c_float_t cab)
 
-    void assign_zb_E_derivatives_c(long* x, int i, double* za, double* zb, int L, int l, int no_kmers,
-                                     DerParams* params, double* Ea, double* Eb, double cab, double sf, double r, double p)
+    void assign_zb_E_derivatives_c(long* x, int i, c_float_t* za, c_float_t* zb, int L, int l, int no_kmers,
+                                     DerParams* params, c_float_t* Ea, c_float_t* Eb, c_float_t cab, c_float_t sf, c_float_t r, c_float_t p)
 
-    void assign_za_r_derivative_c(int i, double* za_r_derivatives, double* zb_r_derivatives, double concentration_times_energy, int l)
-    void assign_za_p_derivative_c(int i, double* za_p_derivatives, double* zb_p_derivatives, double concentration_times_energy, int l)
-    void assign_za_sf_derivative_c(int i, double* za_sf_derivatives, double* zb_sf_derivatives, double concentration_times_energy, int l)
+    void assign_za_r_derivative_c(int i, c_float_t* za_r_derivatives, c_float_t* zb_r_derivatives, c_float_t concentration_times_energy, int l)
+    void assign_za_p_derivative_c(int i, c_float_t* za_p_derivatives, c_float_t* zb_p_derivatives, c_float_t concentration_times_energy, int l)
+    void assign_za_sf_derivative_c(int i, c_float_t* za_sf_derivatives, c_float_t* zb_sf_derivatives, c_float_t concentration_times_energy, int l)
 
-    void assign_zb_r_derivative_c(int i, double* za, double* za_r_derivatives, double* zb_r_derivatives, double energy_b, 
-                                         double cab, double sf,double r, double p, int l)
-    void assign_zb_p_derivative_c(int i, double* za, double* za_p_derivatives, double* zb_p_derivatives, double energy_b, 
-                                         double cab, double sf, double r, double p, int l)
-    void assign_zb_sf_derivative_c(int i, double* za, double* za_sf_derivatives, double* zb_sf_derivatives, double energy_b, 
-                                         double cab, double sf, double r, double p, int l)
+    void assign_zb_r_derivative_c(int i, c_float_t* za, c_float_t* za_r_derivatives, c_float_t* zb_r_derivatives, c_float_t energy_b, 
+                                         c_float_t cab, c_float_t sf,c_float_t r, c_float_t p, int l)
+    void assign_zb_p_derivative_c(int i, c_float_t* za, c_float_t* za_p_derivatives, c_float_t* zb_p_derivatives, c_float_t energy_b, 
+                                         c_float_t cab, c_float_t sf, c_float_t r, c_float_t p, int l)
+    void assign_zb_sf_derivative_c(int i, c_float_t* za, c_float_t* za_sf_derivatives, c_float_t* zb_sf_derivatives, c_float_t energy_b, 
+                                         c_float_t cab, c_float_t sf, c_float_t r, c_float_t p, int l)
 
-    double cb_c(int, double, double, double)
-    double cb_r_derivative_c(int, double, double, double)
-    double cb_p_derivative_c(int, double, double, double)
-    double cb_sf_derivative_c(int, double, double, double)
-    double digamma(double)
+    c_float_t cb_c(int, c_float_t, c_float_t, c_float_t)
+    c_float_t cb_r_derivative_c(int, c_float_t, c_float_t, c_float_t)
+    c_float_t cb_p_derivative_c(int, c_float_t, c_float_t, c_float_t)
+    c_float_t cb_sf_derivative_c(int, c_float_t, c_float_t, c_float_t)
+    c_float_t digamma(c_float_t)
     
 
 cdef array_from_pointer(void* ptr, int size):
@@ -88,24 +99,24 @@ cdef array_from_pointer(void* ptr, int size):
     
     
 @cython.boundscheck(False)  # Deactivate bounds checking   
-def DP_Z_cy(double[:] args, long[:] x, int l):
+def DP_Z_cy(c_float_t[:] args, long[:] x, int l):
     
     cdef int L = len(x)
     
     kmer_inx = generate_kmer_inx(l)
 
     cdef int no_kmers = len(kmer_inx)
-    cdef double cab = 1.0
+    cdef c_float_t cab = 1.0
 
-    cdef double[:] Ea = args[0:len(kmer_inx)]
-    cdef double[:] Eb = args[len(kmer_inx):2*len(kmer_inx)]
-    cdef double sf = args[-3]
-    cdef double r = args[-2]
-    cdef double p = args[-1]
+    cdef c_float_t[:] Ea = args[0:len(kmer_inx)]
+    cdef c_float_t[:] Eb = args[len(kmer_inx):2*len(kmer_inx)]
+    cdef c_float_t sf = args[-3]
+    cdef c_float_t r = args[-2]
+    cdef c_float_t p = args[-1]
     
     #initialization of statistical weigths
-    cdef double[:] za = np.zeros(L)
-    cdef double[:] zb = np.zeros(L)
+    cdef c_float_t[:] za = np.zeros(L, dtype=np_float_t)
+    cdef c_float_t[:] zb = np.zeros(L, dtype=np_float_t)
 
     cdef int i
     for i in range(0,l):
@@ -118,23 +129,23 @@ def DP_Z_cy(double[:] args, long[:] x, int l):
     initialize_DerParams(&params, L, no_kmers)
 
 
-    cdef double[:] za_sf_derivatives = np.zeros(L)
-    cdef double[:] zb_sf_derivatives = np.zeros(L)
+    cdef c_float_t[:] za_sf_derivatives = np.zeros(L, dtype=np_float_t)
+    cdef c_float_t[:] zb_sf_derivatives = np.zeros(L, dtype=np_float_t)
     
-    cdef double[:] za_r_derivatives = np.zeros(L)
-    cdef double[:] zb_r_derivatives = np.zeros(L)
+    cdef c_float_t[:] za_r_derivatives = np.zeros(L, dtype=np_float_t)
+    cdef c_float_t[:] zb_r_derivatives = np.zeros(L, dtype=np_float_t)
 
-    cdef double[:] za_p_derivatives = np.zeros(L)
-    cdef double[:] zb_p_derivatives = np.zeros(L)
+    cdef c_float_t[:] za_p_derivatives = np.zeros(L, dtype=np_float_t)
+    cdef c_float_t[:] zb_p_derivatives = np.zeros(L, dtype=np_float_t)
 
 
     cdef int inx
     
     #precompute (binding energy of domain a binding at position i)*concentration
-    cdef double energy_conc_a 
+    cdef c_float_t energy_conc_a 
     
     #precompute binding energy of domain b binding at position i
-    cdef double energy_b
+    cdef c_float_t energy_b
     
     #dynamic programming calculation of z and derivatives 
     

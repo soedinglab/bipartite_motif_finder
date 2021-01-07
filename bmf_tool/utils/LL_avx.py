@@ -6,6 +6,12 @@ from scipy.special import logsumexp
 
 from .dp_z import seq2int_cy, generate_kmer_inx, DP_Z_cy
 
+np_float_t = np.float32
+ctypes_datatype = ctypes.c_float
+
+#np_float_t = np.float64
+#ctypes_datatype = ctypes.c_double
+
 # ### implementation of the LL object
 
 
@@ -45,13 +51,13 @@ class nLL:
         
     def assign_z_p(self, tup):
             i, args = tup
-            d_z_x_np = np.frombuffer(dz.get_obj(), dtype=np.float64).reshape(-1, self.N_p)
+            d_z_x_np = np.frombuffer(dz.get_obj(), dtype=np_float_t).reshape(-1, self.N_p)
             z[i], d_z_x_np[:,i] = DP_Z_cy(args, self.X_p[i], self.core_length)
                 
             
     def assign_z_bg(self, tup):
             i, args = tup
-            d_z_xbg_np = np.frombuffer(dz.get_obj(), dtype=np.float64).reshape(-1, self.N_bg)
+            d_z_xbg_np = np.frombuffer(dz.get_obj(), dtype=np_float_t).reshape(-1, self.N_bg)
             z[i], d_z_xbg_np[:,i] = DP_Z_cy(args, self.X_bg[i], self.core_length)
 
 
@@ -68,11 +74,11 @@ class nLL:
     
     
         #define weights and derivatives as a multiprocessing array
-        z_x = mp.Array(ctypes.c_double, self.N_p)
-        d_z_x = mp.Array(ctypes.c_double, (2*(4**self.core_length) + n_pos)*self.N_p)
+        z_x = mp.Array(ctypes_datatype, self.N_p)
+        d_z_x = mp.Array(ctypes_datatype, (2*(4**self.core_length) + n_pos)*self.N_p)
 
-        z_xbg = mp.Array(ctypes.c_double, self.N_bg)
-        d_z_xbg = mp.Array(ctypes.c_double, (2*(4**self.core_length) + n_pos)*self.N_bg) 
+        z_xbg = mp.Array(ctypes_datatype, self.N_bg)
+        d_z_xbg = mp.Array(ctypes_datatype, (2*(4**self.core_length) + n_pos)*self.N_bg) 
         
         #parallelizing
         with mp.Pool(initializer=init, initargs=(z_x,d_z_x), processes=self.no_cores) as pool:
@@ -81,10 +87,10 @@ class nLL:
             pool.map(self.assign_z_bg, [(i, args) for i in range(len(self.X_bg))])
         
         #= convert to np array ======
-        d_z_x = np.frombuffer(d_z_x.get_obj(), dtype=np.float64).reshape(-1, self.N_p)
-        d_z_xbg = np.frombuffer(d_z_xbg.get_obj(), dtype=np.float64).reshape(-1, self.N_bg)
-        z_x = np.frombuffer(z_x.get_obj(), dtype=np.float64)
-        z_xbg = np.frombuffer(z_xbg.get_obj(), dtype=np.float64)
+        d_z_x = np.frombuffer(d_z_x.get_obj(), dtype=np_float_t).reshape(-1, self.N_p)
+        d_z_xbg = np.frombuffer(d_z_xbg.get_obj(), dtype=np_float_t).reshape(-1, self.N_bg)
+        z_x = np.frombuffer(z_x.get_obj(), dtype=np_float_t)
+        z_xbg = np.frombuffer(z_xbg.get_obj(), dtype=np_float_t)
         #============================
         
         #calculate log likelihood of model given arg parameters

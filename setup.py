@@ -1,8 +1,14 @@
 from setuptools import setup, Extension, find_packages
 import numpy as np
 from Cython.Build import cythonize
+import os
 
+USE_AVX = 'USE_AVX'
 
+compile_args = ['-std=c99', '-mfpmath=sse']
+if USE_AVX in os.environ:
+    compile_args = compile_args + ['-mavx2', '-DAVX2=1', '-DUSEAVX_FLOAT']
+    
 setup(
     name="bmf_tool",
     version="1.0.0",
@@ -16,7 +22,7 @@ setup(
     ext_modules=cythonize([
         Extension('bmf_tool.utils.dp_z',
               sources=['bmf_tool/utils/dp_z.pyx'],
-              extra_compile_args=['-std=c99', '-mavx2', '-mfpmath=sse', '-DAVX2=1'],
+              extra_compile_args=compile_args,
               include_dirs=[np.get_include()]
               )
     ]),

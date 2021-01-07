@@ -2,6 +2,9 @@ import argparse
 import os
 import numpy as np
 
+np_float_t = np.float32
+#np_float_t = np.float64
+
 from .utils import (
     parse_sequences, 
     optimize_adam,
@@ -19,7 +22,7 @@ from .utils import (
 
 def create_parser():
     parser = argparse.ArgumentParser(description='BipartiteMotifFinder can learn two over-represented patterns together with their spacing preference.')
-    parser.add_argument('sequences', type=str, help='Train mode: positive sequences enriched with the motif. Test mode: all sequences to be tested')
+    parser.add_argument('sequences', type=str, help='Train mode: positive sequences enriched with the motif. Predict mode: all sequences to be tested')
     group = parser.add_mutually_exclusive_group()
     group.add_argument('--BGsequences', type=str, default=None, help='background sequences (only relevant for training).')
     group.add_argument('--predict', action="store_true", default=False, help='use this flag to run the prediction mode.')
@@ -40,7 +43,7 @@ def main():
 
     PSsequences_path = args.sequences
     BGsequences_path = args.BGsequences
-    test = args.test
+    predict = args.predict
     input_type = args.input_type
     parameters_path = args.model_parameters
     core_length = args.motif_length
@@ -60,7 +63,7 @@ def main():
     #  train mode                #
     ##############################
 
-    if not test:
+    if not predict:
 
         print('BMF training mode')
         #make sure the BG sequences are specified
@@ -126,6 +129,7 @@ def main():
             ###########
 
             parameters = np.concatenate([x.ravel() for x in [Ea, Eb, np.array([sf, r, p])]])
+            parameters = parameters.astype(np_float_t)
             
             seq_per_batch = batch_size
 
@@ -146,14 +150,14 @@ def main():
 
 
     ##############################
-    #  test mode                 #
+    #  predict mode                 #
     ##############################
     else:
 
         print('BMF prediction mode')
         #make sure the model parameters are specified
         if parameters_path is None:
-            raise ValueError('Please specify model parameters for the test mode using --model_parameters')
+            raise ValueError('Please specify model parameters for the predict mode using --model_parameters')
 
         #set the prefix to default if user not defined
         if output_prefix is None:
@@ -177,6 +181,7 @@ def main():
         #choose best LL solution if multiple runs exist
         n_log_likelihoods = [param[-3] for param in params]
         tetha = params[np.argmin(n_log_likelihoods)][:-1]
+        tetha = tetha.astype(np_float_t)
 
         #check if motif length matches param file
         expected_param_no = 2*(4**core_length)+3
