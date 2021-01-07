@@ -18,28 +18,47 @@ BMF is also available as a webserver:
 [Sohrabi-Jahromi S and Söding J. Thermodynamic model reveals most RNA-bindingproteins prefer simple and repetitive motifs](https://github.com/soedinglab/bipartite_motif_finder/).
 
 ## Documentation
-BMF user guide is available in our [GitHub Wiki](https://github.com/soedinglab/bipartite_motif_finder/wiki) or as a [PDF file](https://github.com/soedinglab/bipartite_motif_finder/wiki). For questions please open an issue on [GitHub](https://github.com/soedinglab/bipartite_motif_finder/issues).
+A more comprehensive BMF user guide is available in our [GitHub Wiki](https://github.com/soedinglab/bipartite_motif_finder/wiki). For questions please open an issue on [GitHub](https://github.com/soedinglab/bipartite_motif_finder/issues).
+
 
 ## Installation
 
 ### Requirements
-  * BMF requires AVX2 extension capable processor. You can check if AVX2 is supported by executing `cat /proc/cpuinfo | grep avx2` on Linux and `sysctl -a | grep machdep.cpu.leaf7_features | grep AVX2` on MacOS).
   * `python>3.6`
   * `numpy`
   * `cython`
+  
+#### Installing requirements with Conda:
 
-### Step-by-step installation:
-
-  1. Create a new conda environment with `python`, `numpy`, and `cython`:
+Create a new conda environment with `python`, `numpy`, and `cython`:
   
     conda create -n bmf python=3.6 numpy cython
     conda activate bmf
-       
-  2. Install BMF with pip:
-  
-    pip install https://github.com/soedinglab/bipartite_motif_finder/releases/download/v1.0.0a/bmf_tool-1.0.0.tar.gz
 
-  See BMF help page:
+    
+#### Installing requirements on Ubuntu without Conda:
+
+    sudo apt-get update
+    sudo apt-get install python3.6 python3-pip
+    pip3 install numpy cython
+    
+#### Installing requirements on MacOS with brew:
+
+    brew install python3
+    pip install numpy cython
+    
+
+### BMF installation:
+
+   1. **Optional:** BMF is also available as a faster version for running on AVX2 extension capable processor. You can check if AVX2 is supported by executing `cat /proc/cpuinfo | grep avx2` on Linux and `sysctl -a | grep machdep.cpu.leaf7_features | grep AVX2` on MacOS). If your processor supports AVX2, run the following command to compile a faster version of BMF:
+
+    export USE_AVX=1
+
+   2. Install BMF with pip:
+
+    pip install https://github.com/soedinglab/bipartite_motif_finder/releases/download/v1.0.0a/bmf_tool-1.0.0.tar.gz
+  
+See BMF help page:
   
     bmf --help
 
