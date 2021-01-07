@@ -1,5 +1,4 @@
 #include "src_helper_avx_nb.h"
-#include "simd.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -11,6 +10,7 @@ static inline void initialize_array(c_float_t* arr, c_float_t value, int length)
 }
 
 #ifdef USEAVX_DOUBLE
+    #include "simd.h"
 
     static inline void add_array(c_float_t* out, c_float_t* x, c_float_t* y, size_t N) {
         for (int n = 0; n < N; n+=VECSIZE_DOUBLE) {
@@ -43,9 +43,31 @@ static inline void initialize_array(c_float_t* arr, c_float_t value, int length)
             simdf64_store(out + n,  mul_xc);
         }
     }
+
+    void initialize_DerParams(DerParams* params, int L, int no_kmers) {
+
+        params->der_a = malloc_simd_double(sizeof(c_float_t) * no_kmers);
+        initialize_array(params->der_a, 0, no_kmers);
+
+        params->der_b = malloc_simd_double(sizeof(c_float_t) * no_kmers);
+        initialize_array(params->der_b, 0, no_kmers);
+
+        params->za_Ea_derivatives = malloc_simd_double(sizeof(c_float_t) * no_kmers * L);
+        initialize_array(params->za_Ea_derivatives, 0, no_kmers * L);
+
+        params->za_Eb_derivatives = malloc_simd_double(sizeof(c_float_t) * no_kmers * L);
+        initialize_array(params->za_Eb_derivatives, 0, no_kmers * L);
+
+        params->zb_Ea_derivatives = malloc_simd_double(sizeof(c_float_t) * no_kmers * L);
+        initialize_array(params->zb_Ea_derivatives, 0, no_kmers * L);
+
+        params->zb_Eb_derivatives = malloc_simd_double(sizeof(c_float_t) * no_kmers * L);
+        initialize_array(params->zb_Eb_derivatives, 0, no_kmers * L);
+    }
     
 
 #elif USEAVX_FLOAT
+    #include "simd.h"
 
     static inline void add_array(c_float_t* out, c_float_t* x, c_float_t* y, size_t N) {
         for (int n = 0; n < N; n+=VECSIZE_FLOAT) {
@@ -79,6 +101,27 @@ static inline void initialize_array(c_float_t* arr, c_float_t value, int length)
         }
     }
 
+    void initialize_DerParams(DerParams* params, int L, int no_kmers) {
+
+        params->der_a = malloc_simd_float(sizeof(c_float_t) * no_kmers);
+        initialize_array(params->der_a, 0, no_kmers);
+
+        params->der_b = malloc_simd_float(sizeof(c_float_t) * no_kmers);
+        initialize_array(params->der_b, 0, no_kmers);
+
+        params->za_Ea_derivatives = malloc_simd_float(sizeof(c_float_t) * no_kmers * L);
+        initialize_array(params->za_Ea_derivatives, 0, no_kmers * L);
+
+        params->za_Eb_derivatives = malloc_simd_float(sizeof(c_float_t) * no_kmers * L);
+        initialize_array(params->za_Eb_derivatives, 0, no_kmers * L);
+
+        params->zb_Ea_derivatives = malloc_simd_float(sizeof(c_float_t) * no_kmers * L);
+        initialize_array(params->zb_Ea_derivatives, 0, no_kmers * L);
+
+        params->zb_Eb_derivatives = malloc_simd_float(sizeof(c_float_t) * no_kmers * L);
+        initialize_array(params->zb_Eb_derivatives, 0, no_kmers * L);
+    }
+
 
 #else
 
@@ -103,56 +146,28 @@ static inline void initialize_array(c_float_t* arr, c_float_t value, int length)
         }
     }
 
-#endif
-
-//for double definitions
-#if defined(USEAVX_DOUBLE) || defined(NOAVX_DOUBLE) 
-
     void initialize_DerParams(DerParams* params, int L, int no_kmers) {
 
-        params->der_a = malloc_simd_double(sizeof(c_float_t) * no_kmers);
+        params->der_a = malloc(sizeof(c_float_t) * no_kmers);
         initialize_array(params->der_a, 0, no_kmers);
 
-        params->der_b = malloc_simd_double(sizeof(c_float_t) * no_kmers);
+        params->der_b = malloc(sizeof(c_float_t) * no_kmers);
         initialize_array(params->der_b, 0, no_kmers);
 
-        params->za_Ea_derivatives = malloc_simd_double(sizeof(c_float_t) * no_kmers * L);
+        params->za_Ea_derivatives = malloc(sizeof(c_float_t) * no_kmers * L);
         initialize_array(params->za_Ea_derivatives, 0, no_kmers * L);
 
-        params->za_Eb_derivatives = malloc_simd_double(sizeof(c_float_t) * no_kmers * L);
+        params->za_Eb_derivatives = malloc(sizeof(c_float_t) * no_kmers * L);
         initialize_array(params->za_Eb_derivatives, 0, no_kmers * L);
 
-        params->zb_Ea_derivatives = malloc_simd_double(sizeof(c_float_t) * no_kmers * L);
+        params->zb_Ea_derivatives = malloc(sizeof(c_float_t) * no_kmers * L);
         initialize_array(params->zb_Ea_derivatives, 0, no_kmers * L);
 
-        params->zb_Eb_derivatives = malloc_simd_double(sizeof(c_float_t) * no_kmers * L);
+        params->zb_Eb_derivatives = malloc(sizeof(c_float_t) * no_kmers * L);
         initialize_array(params->zb_Eb_derivatives, 0, no_kmers * L);
     }
 
-#else
-
-    void initialize_DerParams(DerParams* params, int L, int no_kmers) {
-
-        params->der_a = malloc_simd_float(sizeof(c_float_t) * no_kmers);
-        initialize_array(params->der_a, 0, no_kmers);
-
-        params->der_b = malloc_simd_float(sizeof(c_float_t) * no_kmers);
-        initialize_array(params->der_b, 0, no_kmers);
-
-        params->za_Ea_derivatives = malloc_simd_float(sizeof(c_float_t) * no_kmers * L);
-        initialize_array(params->za_Ea_derivatives, 0, no_kmers * L);
-
-        params->za_Eb_derivatives = malloc_simd_float(sizeof(c_float_t) * no_kmers * L);
-        initialize_array(params->za_Eb_derivatives, 0, no_kmers * L);
-
-        params->zb_Ea_derivatives = malloc_simd_float(sizeof(c_float_t) * no_kmers * L);
-        initialize_array(params->zb_Ea_derivatives, 0, no_kmers * L);
-
-        params->zb_Eb_derivatives = malloc_simd_float(sizeof(c_float_t) * no_kmers * L);
-        initialize_array(params->zb_Eb_derivatives, 0, no_kmers * L);
-    }
 #endif
-
 
 c_float_t sum_array_c(c_float_t* arr, int length)
 {
