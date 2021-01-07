@@ -33,7 +33,7 @@ def create_parser():
     parser.add_argument('--output_prefix', action="store", type=str, default=None, help='output file prefix. \nYou can specify a directory e.g. "--output_prefix output_dir/my_prefix"')
     parser.add_argument('--var_thr', action="store", type=float, default=0.03, help='variability threshold condition to stop ADAM')
     parser.add_argument('--batch_size', action="store", type=int, default=512, help='batch size')
-    parser.add_argument('--max_iterations', action="store", type=int, default=1000, help='max number of iterations before stopping ADAM')
+    parser.add_argument('--max_iterations', action="store", type=int, default=1000, help='max number of iterations before stopping ADAM. We recommend values between 500 and 1500')
     parser.add_argument('--no_cores', action="store", type=int, default=4, help='the numbers of CPU cores used')
     return parser
 
@@ -43,7 +43,7 @@ def main():
 
     PSsequences_path = args.sequences
     BGsequences_path = args.BGsequences
-    predict = args.predict
+    predicttion_mode = args.predict
     input_type = args.input_type
     parameters_path = args.model_parameters
     core_length = args.motif_length
@@ -63,7 +63,7 @@ def main():
     #  train mode                #
     ##############################
 
-    if not predict:
+    if not predicttion_mode:
 
         print('BMF training mode')
         #make sure the BG sequences are specified
