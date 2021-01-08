@@ -186,6 +186,10 @@ def prefix2params(parameter_prefix, core_length):
     # find all corresponding parameter files
     param_files = [s for s in os.listdir(path_to_dir) if s.startswith(f'{param_file_names}') & s.endswith('txt')]
 
+    #return empty list if file list is empty
+    if len(param_files) == 0:
+        return []
+
     #read the parameters
     params = read_params_for_plot([os.path.join(path_to_dir, param_file) for param_file in param_files])
     
@@ -200,6 +204,17 @@ def main():
     core_length = args.motif_length
 
     params = prefix2params(parameter_prefix, core_length)
+
+    if len(params) == 0:
+        print('Error: There are no parameter files corresponding to the specified parameter_prefix')
+        return
+
+    #check if motif length matches param file
+    expected_param_no = 2*(4**core_length)+3
+    if params[0].shape[0] != expected_param_no:
+        print(f'Error: The specifies motif_length does not match the number of parameters')
+        return
+
     plot_logo(params, f'{parameter_prefix}_seqLogo', core_length)
     
     bipartite = is_bipartite(params, core_length)

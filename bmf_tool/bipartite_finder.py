@@ -175,6 +175,11 @@ def main():
         # find all corresponding parameter files
         param_files = [s for s in os.listdir(path_to_dir) if s.startswith(f'{param_file_names}') & s.endswith('txt')]
 
+        #check if there is at least one parameter
+        if len(param_files) == 0:
+            print('Error: There are no parameter files corresponding to the specified --model_parameters.')
+            return
+
         #read the parameters
         params = read_params([os.path.join(path_to_dir, param_file) for param_file in param_files])
 
@@ -187,7 +192,7 @@ def main():
         expected_param_no = 2*(4**core_length)+3
         if tetha.shape[0] != expected_param_no:
             print(f'Error: The specifies motif_length does not match the number of parameters')
-            exit
+            return
 
         #calculate auroc and ap scores
         kmer_inx = generate_kmer_inx(core_length)
