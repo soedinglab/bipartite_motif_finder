@@ -1,7 +1,10 @@
 import argparse
 import os
 import numpy as np
+
 import matplotlib
+matplotlib.use('AGG')
+
 import seaborn as sns
 import pandas as pd
 from matplotlib import pyplot as plt

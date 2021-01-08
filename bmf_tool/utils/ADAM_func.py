@@ -2,6 +2,10 @@ import numpy as np
 import random
 import pandas as pd
 from sklearn.metrics import roc_curve, roc_auc_score, average_precision_score
+
+import matplotlib
+matplotlib.use('AGG')
+
 from matplotlib import pyplot as plt
 from Bio import SeqIO
 
@@ -94,7 +98,7 @@ def partition (list_in, n):
 
 
 def plt_performance(plus, bg, param_history, core_length, kmer_inx, file_name, evaluate_after, final_plot=True, ll_hist=None):
-    
+
     inx_kmer = dict((v,k) for k,v in kmer_inx.items())
         
     fig, (ax1, ax2, ax3) = plt.subplots(1,3, figsize=(12,3))
