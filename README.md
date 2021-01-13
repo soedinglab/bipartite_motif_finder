@@ -66,7 +66,7 @@ See BMF help page:
 
 Please refer to our [GitHub Wiki](https://github.com/soedinglab/bipartite_motif_finder/wiki) for a more detailed description of BMF and all its input parameters. In the following we provide an example workflow.
 
-    bmf [-h] [--BGsequences BGSEQUENCES | --test]
+    bmf [-h] [--BGsequences BGSEQUENCES | --predict]
            [--input_type {fasta,fastq,seq}]
            [--model_parameters MODEL_PARAMETERS] [--motif_length MOTIF_LENGTH]
            [--no_tries NO_TRIES] [--output_prefix OUTPUT_PREFIX]
