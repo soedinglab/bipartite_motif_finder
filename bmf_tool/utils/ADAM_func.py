@@ -175,8 +175,8 @@ def plt_performance(plus, bg, param_history, core_length, kmer_inx, file_name, e
         core1_hist = [arr[kmer_inx[kmer1]] for arr in param_history]
         core2_hist = [arr[kmer_inx[kmer2]+ len(kmer_inx)] for arr in param_history]
         
-        ax2.plot(xx, core1_hist, color='#097d87', label='core1 %s E'%kmer1, ls='--')
-        ax2.plot(xx, core2_hist, color='#873f0b', label='core2 %s E'%kmer2, ls='--')
+        ax2.plot(xx, core1_hist, color='#097d87', label='core1: %s energy'%kmer1, ls='--')
+        ax2.plot(xx, core2_hist, color='#873f0b', label='core2: %s energy'%kmer2, ls='--')
     
     ax2.set_xlabel('iteration')
     ax2.legend(loc='upper right')
@@ -319,14 +319,14 @@ def optimize_adam(plus, bg,
 
                     #stop when the parameters are stable (see param_local_fluctuation)
                     #OR stop when it took too long ($max_iterations)
-                    
                     variability_index = param_local_fluctuation(param_history)
-                    print(f'Variability index at iteration {t}: {variability_index:.3f}')
                     if variability_index<var_thr or t>max_iterations:
                         if save_files:
                             plt_performance(plus, bg, param_history, core_length, kmer_inx, file_name, evaluate_after)
                             np.savetxt(fname=file_name +'.txt', X=np.append(theta_0,[f_t]))
-                        return theta_0, g_t               
+                        return theta_0, g_t  
+
+                    print(f'Variability index at iteration {t}/{max_iterations}: {variability_index:.3f}')             
                 
             #updates the parameters by moving a step towards gradients
             theta_0 = theta_0 - (alpha*m_cap)/(np.sqrt(v_cap)+epsilon)     
