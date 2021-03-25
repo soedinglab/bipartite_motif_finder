@@ -17,6 +17,8 @@ BMF is also available as a webserver:
 
 [Sohrabi-Jahromi S. and Söding J. Thermodynamic model reveals most RNA-bindingproteins prefer simple and repetitive motifs, bioRxiv 2021](https://www.biorxiv.org/content/10.1101/2021.01.30.428941v1).
 
+Notebooks used to generate the analyses in the manuscript are available at [soedinglab/bmf-paper](https://github.com/soedinglab/bmf-paper).
+
 ## Documentation
 A more comprehensive BMF user guide is available in our [GitHub Wiki](https://github.com/soedinglab/bipartite_motif_finder/wiki). For questions please open an issue on [GitHub](https://github.com/soedinglab/bipartite_motif_finder/issues).
 
